@@ -1,0 +1,122 @@
+{
+  "format": "tenant_bundle_v1",
+  "tenant": "fixture_bank",
+  "generated_at": "2026-09-08T12:15:00+00:00",
+  "subjects": [
+    "version:fixture-version-succession"
+  ],
+  "counts": {
+    "checkpoints": 1,
+    "events": 7,
+    "keys": 2,
+    "audit_log_rows": 2,
+    "documents": 0,
+    "events_not_content_verifiable_total": 0,
+    "events_not_content_verifiable_by_version": {}
+  },
+  "files": {
+    "README.txt": "44f33a6a4d330543432d741e6d36579554ae0e75bcaf630845b463a6ca82d0a2",
+    "SPEC.md": "d266d2d888dde1579b403a3e16e3f36d1b81db9c6c8ce66034d1a72713b4c179",
+    "audit_log.jsonl": "088dcc51f5c94ef4726610123ea1d1c98208a8d4fa0fb95f81cd94e354d8f4fe",
+    "checkpoints/cp-succession-0001.json": "995f66e609924a46d54e6b8af7f8abe4b154934420e631aa207616200242c0f6",
+    "documents/manifest.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "events/fixture-version-succession.jsonl": "83ea9a9f34cb1f876b0393457da77b52eedd0bcba2a1672ebba5d6ad586b8a84",
+    "keys/keys.json": "9c061369a55328ff98b11529c24c2c75e34603d03486481679f4d7747113dbdc",
+    "verify_proof.py": "43fd9504f755bc29963d532a4248b0c44d0bd58eb31502edcf531ce94a6a3416"
+  },
+  "continuity_certificates": {
+    "version:fixture-version-succession": {
+      "statement": {
+        "certificate_version": "1.0",
+        "subject": "version:fixture-version-succession",
+        "issued_at": "2026-09-08T12:10:00+00:00",
+        "period": {
+          "from": "2026-09-01T00:00:00+00:00",
+          "to": "2026-09-07T00:00:00+00:00"
+        },
+        "checkpoint_window": {
+          "from": "2026-09-08T12:05:00+00:00",
+          "to": "2026-09-08T12:05:00+00:00",
+          "requested_from": null,
+          "requested_to": null
+        },
+        "checkpoint_count": 1,
+        "checkpoints": [
+          {
+            "checkpoint_id": "cp-succession-0001",
+            "issued_at": "2026-09-08T12:05:00+00:00",
+            "length": 7,
+            "head_hash": "955da42c7620cfda8bb3558b8067feb01bd6a72667e837b4783edb095596ed3a",
+            "merkle_root": "fcdf475a5872bc9f216b085f1bc797943567fcc0a80603d605e1e046f8a5787a",
+            "tree_size": 7,
+            "key_id": "incoming-key-2026",
+            "signature_hex": "2ee8427c01d305e7b6a65f5df4990e4c1b9db38b94d5976e3851efbfc05c21f506e3aa23694520f9bc61d7d398dac4a6c3f96e5dc9e344692f6308ea9bc3bc09",
+            "sth_body": {
+              "subject": "version:fixture-version-succession",
+              "issued_at": "2026-09-08T12:05:00+00:00",
+              "length": 7,
+              "head_hash": "955da42c7620cfda8bb3558b8067feb01bd6a72667e837b4783edb095596ed3a",
+              "merkle_root": "fcdf475a5872bc9f216b085f1bc797943567fcc0a80603d605e1e046f8a5787a",
+              "tree_size": 7,
+              "key_id": "incoming-key-2026",
+              "ordering_version": 2,
+              "ordinal_watermark": 6,
+              "tree_version": 2
+            }
+          }
+        ],
+        "linkage": [],
+        "linkage_unbroken": true,
+        "linkage_status": "not_applicable",
+        "links_proven": 0,
+        "linkage_problems": [],
+        "excluded_v1_checkpoints": [],
+        "excluded_checkpoints": [],
+        "coverage": {
+          "sealed_event_count": 7,
+          "events_added_in_period": 0,
+          "obligations_in_period": {},
+          "obligations_closing": {}
+        },
+        "coverage_gaps": [],
+        "gap_summary": {
+          "total": 0,
+          "normal_cadence": 0,
+          "exceeds_policy": 0
+        },
+        "claim": "Single sealed checkpoint covering 7 events, signed under the incoming key after a bank-held custody rotation.",
+        "succession": [
+          {
+            "type": "key.succession",
+            "tenant_schema": "t_fixture_bank",
+            "outgoing_key_id": "outgoing-key-2026",
+            "incoming_key_id": "incoming-key-2026",
+            "effective_at": "2026-09-08T12:00:00+00:00",
+            "prior_event_hash": "d56df188e0c62ea036d21da0e0903d124690ee6c71f7d0923c9df978a5bc9d13",
+            "reason": "bank_held_custody",
+            "signature_hex": "1ec05cc60e0500dc45e33289ecef6e8245913e12ce15f605020bbc0245dfbd3442adace3d48762852a4946f11a7acb4658cf1178d65216da3740595ab2330d0e"
+          }
+        ]
+      },
+      "signature_hex": "4584a1e13406b63c19d50fa2a37d0a597cd8feeda467b79671677415f8573fc1f6fd4660282308affbfebfc5bc8185f3a04ea41cec2bfef3c450e7aa6a820d06",
+      "key_id": "incoming-key-2026",
+      "public_keys": {
+        "outgoing-key-2026": {
+          "pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHWNVR0Nw8YdvVMVKiz14k4FjAzyYAPm9ZGMKcrxgY3w=\n-----END PUBLIC KEY-----\n",
+          "revoked": false,
+          "detail": null
+        },
+        "incoming-key-2026": {
+          "pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAeWTQH3GTIcjiQRWTH/TX5SndxFAOfmE65RL6cYjUOh0=\n-----END PUBLIC KEY-----\n",
+          "revoked": false,
+          "detail": null
+        }
+      },
+      "cosignatures": {},
+      "anchors": {},
+      "_verify_with": "python verify_proof.py --bundle-dir .",
+      "_how_it_works": "See SPEC.md \u00a79.3.5 and \u00a713."
+    }
+  },
+  "uncertified_subjects": []
+}
