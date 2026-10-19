@@ -125,6 +125,20 @@ generated and ship the matching PEM. Pass `--pubkey` with the key from
 prints against the published one. Without that step you have checked the bundle
 against itself. `SPEC.md` §9 covers this properly.
 
+**Coriqo's published signing key.** Production seals are signed with:
+
+| key_id | sha256 fingerprint (as `verify_proof.py` prints it) | Status |
+|---|---|---|
+| `coriqo-v1` | `cd93fe9775fd3d555a60d6903b309335af49c65a8b9b5727134dc31059f0ebc4` | active |
+
+The same value is published at `coriqo.io/keyring.js`, which the in-browser
+verifier reads, and served by `GET /api/v1/checkpoints/public-keys`. They are
+kept in separate places on purpose: anyone who could change one would have to
+change all of them unnoticed. If they ever disagree, trust none of them and
+email security@coriqo.io. A key with the same `key_id` and a different
+fingerprint is not ours. Retired or compromised keys stay in this table marked
+`revoked`, never deleted.
+
 **Self-witnessing is not third-party audit.** A cosignature by the
 organisation itself proves Coriqo cannot author that organisation's history
 unnoticed, because Coriqo does not hold the witness key. It says nothing about
