@@ -1,0 +1,32 @@
+{
+  "about": "Conformance cases for coriqo.mandate.yaml v1, up to revision 1.1 (MANDATE_SPEC.md section 8). A conforming reader accepts every valid file with the listed document hash and warning count, and refuses every invalid file with an error naming the listed field. schema_agrees says whether mandate.schema.json reaches the same verdict on its own.",
+  "valid": [
+    {"file": "valid/minimal.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/defaults_explicit.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/nulls_explicit.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/newer_minor.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 1, "schema_agrees": false},
+    {"file": "valid/full.yaml", "sha256": "830d0806bca8b2b2b0a6012f446041bc3eb99d499a68d2ee222ac7e87198654a", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/full_reordered.json", "sha256": "830d0806bca8b2b2b0a6012f446041bc3eb99d499a68d2ee222ac7e87198654a", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/stop_grace_set.yaml", "sha256": "bc787fdd223438316ff7db367e5942603872c34ee3d9ce627cc619a2f7fd9e45", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/stop_grace_null.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true}
+  ],
+  "invalid": [
+    {"file": "invalid/missing_spec.yaml", "field": "spec", "schema_agrees": true},
+    {"file": "invalid/major_v2.yaml", "field": "spec", "schema_agrees": true},
+    {"file": "invalid/missing_agent_name.yaml", "field": "agent.name", "schema_agrees": true},
+    {"file": "invalid/bad_mode.yaml", "field": "mode", "schema_agrees": true},
+    {"file": "invalid/staleness_too_short.yaml", "field": "max_staleness_s", "schema_agrees": true},
+    {"file": "invalid/tool_both_lists.yaml", "field": "tools", "schema_agrees": false},
+    {"file": "invalid/cost_too_precise.yaml", "field": "max_cost_usd", "schema_agrees": false},
+    {"file": "invalid/misspelt_field.yaml", "field": "tools.prohibted", "schema_agrees": true},
+    {"file": "invalid/bad_violation.yaml", "field": "on_violation", "schema_agrees": true},
+    {"file": "invalid/steps_boolean.yaml", "field": "max_steps_per_run", "schema_agrees": true},
+    {"file": "invalid/not_a_mapping.yaml", "field": "the document", "schema_agrees": true},
+    {"file": "invalid/bad_inspection_switch.yaml", "field": "output_inspection.instruction_like", "schema_agrees": true},
+    {"file": "invalid/bare_off.yaml", "field": "output_inspection.secrets", "schema_agrees": true},
+    {"file": "invalid/stop_grace_zero.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/stop_grace_too_long.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/stop_grace_fraction.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/stop_grace_boolean.yaml", "field": "stop_grace_s", "schema_agrees": true}
+  ]
+}

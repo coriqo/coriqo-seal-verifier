@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use or cite this specification or verifier, please cite it as below."
+title: "Coriqo Attestation Format and seal verifier"
+type: software
+authors:
+  - family-names: "Rabiu"
+    given-names: "Abdulrafiu"
+    affiliation: "Coriqo"
+license: Apache-2.0
+repository-code: "https://github.com/coriqo/coriqo-seal-verifier"
+version: "2026.10.22.1"
+date-released: "2026-10-22"
+keywords: [verification, audit, transparency-log, merkle, ed25519]

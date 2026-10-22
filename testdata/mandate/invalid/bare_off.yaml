@@ -1,0 +1,6 @@
+# A YAML 1.1 loader reads bare off as false. The error tells the writer to quote it.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+output_inspection:
+  secrets: off
