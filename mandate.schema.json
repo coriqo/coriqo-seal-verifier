@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/coriqo/coriqo-seal-verifier/blob/main/mandate.schema.json",
+  "title": "Coriqo mandate file (coriqo.mandate.yaml), v1 (revision 1.1)",
+  "description": "What an AI agent may do, written once and read by every place that enforces or checks it. MANDATE_SPEC.md is the normative text. Two of its rules cannot be written in JSON Schema: a tool listed as both allowed and prohibited, and max_cost_usd with more than 6 decimal places. This schema refuses fields from a newer v1 revision; a reader following MANDATE_SPEC.md section 3 warns and ignores them instead.",
+  "type": "object",
+  "required": ["spec", "agent"],
+  "properties": {
+    "spec": {
+      "type": "string",
+      "pattern": "^coriqo\\.mandate/v1(\\.[0-9]+)?$",
+      "description": "Format and version. Write coriqo.mandate/v1."
+    },
+    "agent": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "\\S"},
+        "external_id": {"$ref": "#/$defs/name"}
+      }
+    },
+    "environment": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "mandate": {"type": ["string", "null"], "minLength": 1, "maxLength": 20000, "pattern": "\\S"},
+    "mode": {"enum": ["shadow", "enforce"], "default": "shadow"},
+    "on_stale_snapshot": {"enum": ["fail_open", "fail_closed"], "default": "fail_open"},
+    "max_staleness_s": {"type": "integer", "minimum": 30, "maximum": 86400, "default": 300},
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {"anyOf": [{"$ref": "#/$defs/toolList"}, {"type": "null"}]},
+        "prohibited": {"$ref": "#/$defs/toolList"}
+      }
+    },
+    "max_steps_per_run": {"type": ["integer", "null"], "minimum": 1, "maximum": 1000000},
+    "max_cost_usd": {"type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 999999.999999},
+    "delegation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "policy": {"enum": ["none", "attenuated"], "default": "none"},
+        "max_depth": {"type": "integer", "minimum": 0, "maximum": 20, "default": 3}
+      }
+    },
+    "output_inspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Tool output checks. A runtime that acts on them flags a tool result that looks like an instruction, a secret or personal data, and on redact removes it before the agent reads it.",
+      "properties": {
+        "instruction_like": {"enum": ["off", "flag"], "default": "off"},
+        "secrets": {"enum": ["off", "flag", "redact"], "default": "off"},
+        "pii": {"enum": ["off", "flag", "redact"], "default": "off"}
+      }
+    },
+    "on_violation": {"enum": ["deny", "deny_and_halt_run", "alert_only"], "default": "deny"},
+    "stop_grace_s": {
+      "type": ["integer", "null"], "minimum": 1, "maximum": 600,
+      "description": "v1.1. Seconds each worker the runtime started gets to stop after the agent is suspended, before it is ended. Absent or null: the runtime's own default."
+    }
+  },
+  "patternProperties": {"^x-": {}},
+  "additionalProperties": false,
+  "$defs": {
+    "name": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S"},
+    "toolList": {"type": "array", "maxItems": 500, "items": {"$ref": "#/$defs/name"}}
+  }
+}

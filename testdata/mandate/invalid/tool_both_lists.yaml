@@ -1,0 +1,7 @@
+# JSON Schema cannot see this one; MANDATE_SPEC.md section 4.4 forbids it.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+tools:
+  allowed: [order_lookup, issue_refund]
+  prohibited: [issue_refund]

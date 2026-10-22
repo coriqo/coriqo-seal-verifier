@@ -1,0 +1,3 @@
+- spec: coriqo.mandate/v1
+- agent:
+    name: refund-triage

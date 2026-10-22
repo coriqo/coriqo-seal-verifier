@@ -1,0 +1,45 @@
+[project]
+name = "coriqo-verify"
+dynamic = ["version"]
+description = "Check a Coriqo seal offline: signed checkpoints, inclusion proofs, evidence bundles and agent decisions, with a public key and nothing else."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Abdulrafiu Rabiu" }]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = ["cryptography>=41"]
+
+[project.optional-dependencies]
+# Reading coriqo.mandate.yaml as YAML (JSON needs nothing), and the schema
+# check in tests/test_mandate_format.py.
+mandate = ["pyyaml>=6"]
+test = ["pytest>=7", "pyyaml>=6", "jsonschema>=4"]
+keywords = ["verification", "audit", "transparency-log", "merkle", "ed25519", "examiner"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Legal Industry",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+]
+
+[project.urls]
+Homepage = "https://github.com/coriqo/coriqo-seal-verifier"
+Specification = "https://github.com/coriqo/coriqo-seal-verifier/blob/main/SPEC.md"
+Issues = "https://github.com/coriqo/coriqo-seal-verifier/issues"
+
+[project.scripts]
+coriqo-verify = "verify_proof:main"
+coriqo-cosign = "cosign_checkpoint:main"
+coriqo-mandate = "mandate_format:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["verify_proof", "cosign_checkpoint", "mandate_format"]
+
+[tool.setuptools.dynamic]
+version = { attr = "verify_proof.VERIFIER_VERSION" }
