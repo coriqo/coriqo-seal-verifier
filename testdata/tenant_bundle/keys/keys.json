@@ -1,0 +1,11 @@
+{
+  "keys": [
+    {
+      "key_id": "test-key-2026",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n",
+      "revoked": false,
+      "detail": null
+    }
+  ],
+  "succession": []
+}

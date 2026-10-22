@@ -1,0 +1,38 @@
+[
+  {
+    "file": "decision_inside.json",
+    "mode": "trace",
+    "exit": 0,
+    "line": "0 of 2 recorded tool calls fell outside the sealed mandate"
+  },
+  {
+    "file": "decision_outside.json",
+    "mode": "trace",
+    "exit": 0,
+    "line": "1 of 1 recorded tool calls fell outside the sealed mandate",
+    "outside": [
+      {
+        "trace_id": "t-3",
+        "step": 1,
+        "tool": "wire_transfer",
+        "why": "prohibited"
+      }
+    ]
+  },
+  {
+    "file": "proof_inside.json",
+    "mode": "proof",
+    "exit": 0,
+    "line": "0 of 3 recorded tool calls fell outside the sealed mandate",
+    "gaps": []
+  },
+  {
+    "file": "proof_with_gap.json",
+    "mode": "proof",
+    "exit": 0,
+    "line": "1 of 3 recorded tool calls fell outside the sealed mandate",
+    "gaps": [
+      "v-loan-agent-1: #2"
+    ]
+  }
+]
