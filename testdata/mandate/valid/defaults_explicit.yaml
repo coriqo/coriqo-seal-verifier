@@ -1,0 +1,19 @@
+# minimal.yaml with every default written out, plus an x- extension field.
+# Same document hash as minimal.yaml (MANDATE_SPEC.md section 6).
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+mode: shadow
+on_stale_snapshot: fail_open
+max_staleness_s: 300
+tools:
+  prohibited: []
+delegation:
+  policy: none
+  max_depth: 3
+output_inspection:
+  instruction_like: "off"
+  secrets: "off"
+  pii: "off"
+on_violation: deny
+x-owner: payments-platform team

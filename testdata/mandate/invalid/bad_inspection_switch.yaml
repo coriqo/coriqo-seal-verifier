@@ -1,0 +1,6 @@
+# instruction_like can be flagged, never redacted.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+output_inspection:
+  instruction_like: redact
