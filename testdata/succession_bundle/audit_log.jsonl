@@ -1,0 +1,2 @@
+{"log_id":"log-0","seq":0,"actor_id":"alice","actor_type":"human","action":"MODEL_SUBMITTED","resource_type":"model_version","resource_id":"fixture-version-succession","metadata":null,"user_agent":null,"request_id":null,"created_at":"2026-09-01T00:00:00+00:00"}
+{"log_id":"log-1","seq":1,"actor_id":"alice","actor_type":"human","action":"MODEL_SUBMITTED","resource_type":"model_version","resource_id":"fixture-version-succession","metadata":null,"user_agent":null,"request_id":null,"created_at":"2026-09-01T00:00:00+00:00"}

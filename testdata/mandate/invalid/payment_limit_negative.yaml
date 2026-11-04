@@ -1,0 +1,4 @@
+spec: coriqo.mandate/v1.2
+agent:
+  name: payout-agent
+max_transaction_usd_per_day: -5

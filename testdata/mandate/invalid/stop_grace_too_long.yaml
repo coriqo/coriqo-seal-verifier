@@ -1,0 +1,4 @@
+spec: coriqo.mandate/v1.1
+agent:
+  name: refund-triage
+stop_grace_s: 601

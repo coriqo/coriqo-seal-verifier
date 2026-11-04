@@ -1,0 +1,22 @@
+{
+  "on_violation": "deny_and_halt_run",
+  "output_inspection": {"pii": "flag", "secrets": "redact", "instruction_like": "flag"},
+  "delegation": {"max_depth": 1, "policy": "attenuated"},
+  "max_cost_usd": 1.50,
+  "max_steps_per_run": 25,
+  "tools": {
+    "prohibited": ["send_email", "issue_refund", "send_email"],
+    "allowed": ["propose_refund", "order_lookup", "refund_policy_search"]
+  },
+  "max_staleness_s": 600,
+  "on_stale_snapshot": "fail_closed",
+  "mode": "enforce",
+  "mandate": "Reads a customer's refund request and the order record, and proposes\r\napprove or refer. It never moves money itself.\r\n\r\n",
+  "environment": "production",
+  "agent": {
+    "external_id": "support/refund-triage",
+    "id": "3f0c7a52-0d7e-4b8e-9a51-2f1c6a9e7d10",
+    "name": "refund-triage"
+  },
+  "spec": "coriqo.mandate/v1"
+}

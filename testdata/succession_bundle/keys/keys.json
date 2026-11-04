@@ -1,0 +1,29 @@
+{
+  "keys": [
+    {
+      "key_id": "outgoing-key-2026",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAHWNVR0Nw8YdvVMVKiz14k4FjAzyYAPm9ZGMKcrxgY3w=\n-----END PUBLIC KEY-----\n",
+      "revoked": false,
+      "detail": null
+    },
+    {
+      "key_id": "incoming-key-2026",
+      "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAeWTQH3GTIcjiQRWTH/TX5SndxFAOfmE65RL6cYjUOh0=\n-----END PUBLIC KEY-----\n",
+      "revoked": false,
+      "detail": null
+    }
+  ],
+  "succession": [
+    {
+      "type": "key.succession",
+      "tenant_schema": "t_fixture_bank",
+      "outgoing_key_id": "outgoing-key-2026",
+      "incoming_key_id": "incoming-key-2026",
+      "effective_at": "2026-09-08T12:00:00+00:00",
+      "prior_event_hash": "d56df188e0c62ea036d21da0e0903d124690ee6c71f7d0923c9df978a5bc9d13",
+      "reason": "bank_held_custody",
+      "signature_hex": "1ec05cc60e0500dc45e33289ecef6e8245913e12ce15f605020bbc0245dfbd3442adace3d48762852a4946f11a7acb4658cf1178d65216da3740595ab2330d0e"
+    }
+  ],
+  "revocations": []
+}

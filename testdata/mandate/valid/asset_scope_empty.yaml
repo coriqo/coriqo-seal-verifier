@@ -1,0 +1,8 @@
+# v1.3: an empty block, empty lists and nulls all mean "not restricted".
+# Same document as leaving the block out.
+spec: coriqo.mandate/v1.3
+agent:
+  name: refund-triage
+asset_scope:
+  asset_classes: []
+  venues: null

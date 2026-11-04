@@ -1,0 +1,26 @@
+# Every v1 field set. Invented agent; no real system.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+  id: 3f0c7a52-0d7e-4b8e-9a51-2f1c6a9e7d10
+  external_id: support/refund-triage
+environment: production
+mandate: |
+  Reads a customer's refund request and the order record, and proposes
+  approve or refer. It never moves money itself.
+mode: enforce
+on_stale_snapshot: fail_closed
+max_staleness_s: 600
+tools:
+  allowed: [order_lookup, refund_policy_search, propose_refund]
+  prohibited: [issue_refund, send_email]
+max_steps_per_run: 25
+max_cost_usd: 1.5
+delegation:
+  policy: attenuated
+  max_depth: 1
+output_inspection:
+  instruction_like: flag
+  secrets: redact
+  pii: flag
+on_violation: deny_and_halt_run

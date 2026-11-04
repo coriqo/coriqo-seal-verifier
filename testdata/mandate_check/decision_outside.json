@@ -1,0 +1,109 @@
+{
+  "kind": "coriqo_decision_trace_proof",
+  "format_version": 1,
+  "spec_version": "1.1",
+  "trace": {
+    "trace_id": "t-3",
+    "agent_id": "ag-loan-1",
+    "version_id": "v-loan-agent-1",
+    "input_hash": "9a2ed56def70bd8ef5eb7b41f9dc50bd97442b89fb7d6bb6b721faa39588678a",
+    "output": "decision 3",
+    "output_hash": "5b4afefba84ef05619e7dbe4fbbd3993e89a1683f762f04023c121512e4b8b7f",
+    "tool_calls": [
+      {
+        "step": 1,
+        "tool": "wire_transfer",
+        "args_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "result_hash": "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+      }
+    ],
+    "grounding_refs": [],
+    "occurred_at": "2026-10-03T09:00:00Z",
+    "event_hash": "f0b59960df241a0b5e6bb6069509c73b8cf5f3b470d94042027833620ee8c63f"
+  },
+  "event": {
+    "event_id": "ev-4",
+    "version_id": "v-loan-agent-1",
+    "seq": 4,
+    "actor": "svc-loan",
+    "action": "agent_decision",
+    "from_status": "approved",
+    "to_status": "approved",
+    "notes": "{\"agent_id\":\"ag-loan-1\",\"decision_seq\":3,\"grounding_refs\":[],\"input_hash\":\"9a2ed56def70bd8ef5eb7b41f9dc50bd97442b89fb7d6bb6b721faa39588678a\",\"mandate_sha256\":\"e285319812ae96b4b1f47ecdce212a679b97e13ff17bfce45802b7c5d45b2ef6\",\"output_hash\":\"5b4afefba84ef05619e7dbe4fbbd3993e89a1683f762f04023c121512e4b8b7f\",\"tool_calls_hash\":\"3b81a2e2641062c337300020b0f1f6f84a1d98d29738b9b2e2075e215e9a8a71\",\"trace_id\":\"t-3\"}",
+    "prev_hash": "49961affe7a90b8d5aba794cc21f12ab96cac34319e61794e39385314db5d2c8",
+    "event_hash": "f0b59960df241a0b5e6bb6069509c73b8cf5f3b470d94042027833620ee8c63f"
+  },
+  "proof": {
+    "checkpoint_id": "cp-agent-2026-10",
+    "event_id": "ev-4",
+    "issued_at": "2026-10-10T00:00:00Z",
+    "subject": "version:v-loan-agent-1",
+    "leaf_index": 4,
+    "tree_size": 5,
+    "leaf_input": "f0b59960df241a0b5e6bb6069509c73b8cf5f3b470d94042027833620ee8c63f",
+    "proof_path": [
+      "9aea72463ca8982c5219444659a8569983b9fd34b2ceed50cb622402a26e9687"
+    ],
+    "merkle_root": "15073cf1ce447a84cff43b714f1fbd8f8856468f605ee3afabf431d393e6ecdb",
+    "sth_body": {
+      "subject": "version:v-loan-agent-1",
+      "issued_at": "2026-10-10T00:00:00Z",
+      "length": 5,
+      "head_hash": "f0b59960df241a0b5e6bb6069509c73b8cf5f3b470d94042027833620ee8c63f",
+      "merkle_root": "15073cf1ce447a84cff43b714f1fbd8f8856468f605ee3afabf431d393e6ecdb",
+      "tree_size": 5,
+      "key_id": "test-key-2026",
+      "tree_version": 2
+    },
+    "checkpoint_signature": "74838e1ace5a34824694e5b0f095c27b252d41ffa3a6467237b3b57da2512a39281eb184e1b2b2bb83741d40b8cf4a855e91f59f0252a4989d3f5ccbd0a34305",
+    "key_id": "test-key-2026",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n"
+  },
+  "mandate_check": {
+    "format_version": 1,
+    "mandates": [
+      {
+        "event": {
+          "event_id": "ev-1",
+          "version_id": "v-loan-agent-1",
+          "seq": 1,
+          "actor": "svc-loan",
+          "action": "mandate_snapshot",
+          "from_status": "approved",
+          "to_status": "approved",
+          "notes": "{\"agent_id\":\"ag-loan-1\",\"document\":{\"agent\":{\"external_id\":null,\"id\":\"ag-loan-1\",\"name\":\"loan-agent\"},\"delegation\":{\"max_depth\":3,\"policy\":\"none\"},\"environment\":null,\"mandate\":\"Approve consumer loans under 50,000. Never move money.\",\"max_cost_usd\":null,\"max_staleness_s\":300,\"max_steps_per_run\":null,\"mode\":\"enforce\",\"on_stale_snapshot\":\"fail_open\",\"on_violation\":\"deny\",\"output_inspection\":{\"instruction_like\":\"off\",\"pii\":\"off\",\"secrets\":\"off\"},\"spec\":\"coriqo.mandate/v1\",\"tools\":{\"allowed\":[\"credit_check\",\"income_check\"],\"prohibited\":[\"wire_transfer\"]}},\"mandate_sha256\":\"e285319812ae96b4b1f47ecdce212a679b97e13ff17bfce45802b7c5d45b2ef6\"}",
+          "prev_hash": "4a277834f1aa530efd81ed2045e6fbf7a5f066783c9aa0e585ba139ee92f4d11",
+          "event_hash": "759c124ed50b37b3dc09421070684d15bff099284f7b95e20d4701e86e3e5766"
+        },
+        "proof": {
+          "checkpoint_id": "cp-agent-2026-10",
+          "event_id": "ev-1",
+          "issued_at": "2026-10-10T00:00:00Z",
+          "subject": "version:v-loan-agent-1",
+          "leaf_index": 1,
+          "tree_size": 5,
+          "leaf_input": "759c124ed50b37b3dc09421070684d15bff099284f7b95e20d4701e86e3e5766",
+          "proof_path": [
+            "a3d1334f3868dc7c6ac3df892b7939f4da42812a542e5395c292d62c3c743052",
+            "fa4988517f31ad838ef29b4ee6d130a5fd71fc464c858a6307364bcdf2f4f342",
+            "34d84c39503f08b30b85a73a5488a80caceff3148bfb9f7a8782a74ed66908e6"
+          ],
+          "merkle_root": "15073cf1ce447a84cff43b714f1fbd8f8856468f605ee3afabf431d393e6ecdb",
+          "sth_body": {
+            "subject": "version:v-loan-agent-1",
+            "issued_at": "2026-10-10T00:00:00Z",
+            "length": 5,
+            "head_hash": "f0b59960df241a0b5e6bb6069509c73b8cf5f3b470d94042027833620ee8c63f",
+            "merkle_root": "15073cf1ce447a84cff43b714f1fbd8f8856468f605ee3afabf431d393e6ecdb",
+            "tree_size": 5,
+            "key_id": "test-key-2026",
+            "tree_version": 2
+          },
+          "checkpoint_signature": "74838e1ace5a34824694e5b0f095c27b252d41ffa3a6467237b3b57da2512a39281eb184e1b2b2bb83741d40b8cf4a855e91f59f0252a4989d3f5ccbd0a34305",
+          "key_id": "test-key-2026",
+          "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n"
+        }
+      }
+    ]
+  }
+}

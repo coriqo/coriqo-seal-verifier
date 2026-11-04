@@ -1,0 +1,6 @@
+# v1.1 with stop_grace_s written as null ("not set"). A field added after
+# v1.0 is hashed only when set, so this has the same document hash as minimal.yaml.
+spec: coriqo.mandate/v1.1
+agent:
+  name: refund-triage
+stop_grace_s: null

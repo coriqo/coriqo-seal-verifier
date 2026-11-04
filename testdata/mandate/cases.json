@@ -1,0 +1,42 @@
+{
+  "about": "Conformance cases for coriqo.mandate.yaml v1, up to revision 1.3 (MANDATE_SPEC.md section 8). A conforming reader accepts every valid file with the listed document hash and warning count, and refuses every invalid file with an error naming the listed field. schema_agrees says whether mandate.schema.json reaches the same verdict on its own.",
+  "valid": [
+    {"file": "valid/minimal.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/defaults_explicit.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/nulls_explicit.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/newer_minor.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 1, "schema_agrees": false},
+    {"file": "valid/full.yaml", "sha256": "830d0806bca8b2b2b0a6012f446041bc3eb99d499a68d2ee222ac7e87198654a", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/full_reordered.json", "sha256": "830d0806bca8b2b2b0a6012f446041bc3eb99d499a68d2ee222ac7e87198654a", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/stop_grace_set.yaml", "sha256": "bc787fdd223438316ff7db367e5942603872c34ee3d9ce627cc619a2f7fd9e45", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/stop_grace_null.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/payment_limits_set.yaml", "sha256": "1fc9d4097f9169748300d824ab2d9ba1cc04ac1295ea24876c11061e0b2349ea", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/payment_limits_null.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/asset_scope_set.yaml", "sha256": "59e56e4479a004b7b7e85762df68e4e89fb32d00a95e420828f43cc5666df473", "warnings": 0, "schema_agrees": true},
+    {"file": "valid/asset_scope_empty.yaml", "sha256": "02b471ffd7c0c91832e9f0860030db33724cd4b4ef9e0e859a088578f30bfdf5", "warnings": 0, "schema_agrees": true}
+  ],
+  "invalid": [
+    {"file": "invalid/missing_spec.yaml", "field": "spec", "schema_agrees": true},
+    {"file": "invalid/major_v2.yaml", "field": "spec", "schema_agrees": true},
+    {"file": "invalid/missing_agent_name.yaml", "field": "agent.name", "schema_agrees": true},
+    {"file": "invalid/bad_mode.yaml", "field": "mode", "schema_agrees": true},
+    {"file": "invalid/staleness_too_short.yaml", "field": "max_staleness_s", "schema_agrees": true},
+    {"file": "invalid/tool_both_lists.yaml", "field": "tools", "schema_agrees": false},
+    {"file": "invalid/cost_too_precise.yaml", "field": "max_cost_usd", "schema_agrees": false},
+    {"file": "invalid/misspelt_field.yaml", "field": "tools.prohibted", "schema_agrees": true},
+    {"file": "invalid/bad_violation.yaml", "field": "on_violation", "schema_agrees": true},
+    {"file": "invalid/steps_boolean.yaml", "field": "max_steps_per_run", "schema_agrees": true},
+    {"file": "invalid/not_a_mapping.yaml", "field": "the document", "schema_agrees": true},
+    {"file": "invalid/bad_inspection_switch.yaml", "field": "output_inspection.instruction_like", "schema_agrees": true},
+    {"file": "invalid/bare_off.yaml", "field": "output_inspection.secrets", "schema_agrees": true},
+    {"file": "invalid/stop_grace_zero.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/stop_grace_too_long.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/stop_grace_fraction.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/stop_grace_boolean.yaml", "field": "stop_grace_s", "schema_agrees": true},
+    {"file": "invalid/payment_limit_negative.yaml", "field": "max_transaction_usd_per_day", "schema_agrees": true},
+    {"file": "invalid/payment_limit_too_large.yaml", "field": "max_transaction_usd_per_day", "schema_agrees": true},
+    {"file": "invalid/payment_limit_too_precise.yaml", "field": "max_transaction_usd", "schema_agrees": false},
+    {"file": "invalid/payment_limit_per_call_over_day.yaml", "field": "max_transaction_usd", "schema_agrees": false},
+    {"file": "invalid/asset_scope_bad_class.yaml", "field": "asset_scope.asset_classes[1]", "schema_agrees": true},
+    {"file": "invalid/asset_scope_repeated_venue.yaml", "field": "asset_scope.venues[1]", "schema_agrees": false}
+  ]
+}

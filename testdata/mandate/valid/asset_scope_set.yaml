@@ -1,0 +1,7 @@
+# v1.3: the asset classes and venues the agent may act on.
+spec: coriqo.mandate/v1.3
+agent:
+  name: payout-agent
+asset_scope:
+  asset_classes: [stablecoin, fiat]
+  venues: [coinbase-prime, bank-wire]

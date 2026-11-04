@@ -1,0 +1,11 @@
+# minimal.yaml with "not set" written as null, the way an export writes it.
+# Same document hash as minimal.yaml.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+environment: null
+mandate: null
+tools:
+  allowed: null
+max_steps_per_run: null
+max_cost_usd: null

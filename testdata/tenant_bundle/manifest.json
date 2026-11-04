@@ -1,0 +1,109 @@
+{
+  "format": "tenant_bundle_v1",
+  "tenant": "fixture_bank",
+  "generated_at": "2026-09-08T00:10:00+00:00",
+  "subjects": [
+    "org_default"
+  ],
+  "counts": {
+    "checkpoints": 1,
+    "events": 18,
+    "keys": 1,
+    "audit_log_rows": 2,
+    "documents": 0,
+    "events_not_content_verifiable_total": 1,
+    "events_not_content_verifiable_by_version": {
+      "fixture-version-beta": 1
+    }
+  },
+  "files": {
+    "README.txt": "d5bdf098ac309df516456f1fc3a2a3213c091a352396ef22048b303375a97511",
+    "SPEC.md": "d266d2d888dde1579b403a3e16e3f36d1b81db9c6c8ce66034d1a72713b4c179",
+    "audit_log.jsonl": "262260a7bae94a652d5477b4493eb0184b8d9f5539beecf9579871ecccd80d82",
+    "checkpoints/cp-fixture-0001.json": "67460fcff598c4a02e38852663201ec8db0b6e2d7e372cb22d63cb7def6fd188",
+    "documents/manifest.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "events/fixture-version-alpha.jsonl": "6f887934eedf0f47d6dd0abe1691e0f0f8a1a6dd4b58f6084a72b99d1bec65a1",
+    "events/fixture-version-beta.jsonl": "f21b40f12ade722f591e917a902889e80f0f478b2cbf217100274f18f981e5ab",
+    "keys/keys.json": "e2866f15daa1864ffe3685b120e15c2bfb858e8a6c80039860deb99a9685937d",
+    "verify_proof.py": "43fd9504f755bc29963d532a4248b0c44d0bd58eb31502edcf531ce94a6a3416"
+  },
+  "continuity_certificates": {
+    "org_default": {
+      "statement": {
+        "certificate_version": "1.0",
+        "subject": "org_default",
+        "issued_at": "2026-09-08T00:05:00+00:00",
+        "period": {
+          "from": "2026-01-01T00:00:00+00:00",
+          "to": "2026-09-01T00:00:00+00:00"
+        },
+        "checkpoint_window": {
+          "from": "2026-09-08T00:00:00+00:00",
+          "to": "2026-09-08T00:00:00+00:00",
+          "requested_from": null,
+          "requested_to": null
+        },
+        "checkpoint_count": 1,
+        "checkpoints": [
+          {
+            "checkpoint_id": "cp-fixture-0001",
+            "issued_at": "2026-09-08T00:00:00+00:00",
+            "length": 18,
+            "head_hash": "23dc633b08f28d5f4ebe02a16a11ad14fe3c5a51d2ab23ada3dab7d2de2c6458",
+            "merkle_root": "a721f6dc1f845dd6514f3b9c3bb3de3c42d4ec0dd470ce04324531ca0cb847b8",
+            "tree_size": 18,
+            "key_id": "test-key-2026",
+            "signature_hex": "ee6472a329c46cbb75bc57dee6eaf5e2ab7bcdad7ef97de091f20062c80238f37850731dbf3d339523850c3eac0d42e4040179173f46bd8c133b281a35fefe0d",
+            "sth_body": {
+              "subject": "org_default",
+              "issued_at": "2026-09-08T00:00:00+00:00",
+              "length": 18,
+              "head_hash": "23dc633b08f28d5f4ebe02a16a11ad14fe3c5a51d2ab23ada3dab7d2de2c6458",
+              "merkle_root": "a721f6dc1f845dd6514f3b9c3bb3de3c42d4ec0dd470ce04324531ca0cb847b8",
+              "tree_size": 18,
+              "key_id": "test-key-2026",
+              "ordering_version": 2,
+              "ordinal_watermark": 17,
+              "tree_version": 2
+            }
+          }
+        ],
+        "linkage": [],
+        "linkage_unbroken": true,
+        "linkage_status": "not_applicable",
+        "links_proven": 0,
+        "linkage_problems": [],
+        "excluded_v1_checkpoints": [],
+        "excluded_checkpoints": [],
+        "coverage": {
+          "sealed_event_count": 18,
+          "events_added_in_period": 0,
+          "obligations_in_period": {},
+          "obligations_closing": {}
+        },
+        "coverage_gaps": [],
+        "gap_summary": {
+          "total": 0,
+          "normal_cadence": 0,
+          "exceeds_policy": 0
+        },
+        "claim": "Single sealed checkpoint covering 18 events across two model versions \u2014 its contents are examiner-verifiable; a second checkpoint is needed before cross-seal linkage can be demonstrated.",
+        "succession": []
+      },
+      "signature_hex": "f503bafde4db7a7ee0ffff71c150dabb7a001f7695195c3b849cc75962eeecb6e815e96df13ce546e3d515a3b5fd1cc8332c8e804215ba41c26f1f0935916b05",
+      "key_id": "test-key-2026",
+      "public_keys": {
+        "test-key-2026": {
+          "pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n",
+          "revoked": false,
+          "detail": null
+        }
+      },
+      "cosignatures": {},
+      "anchors": {},
+      "_verify_with": "python verify_proof.py --bundle-dir .",
+      "_how_it_works": "See SPEC.md \u00a79 and \u00a713."
+    }
+  },
+  "uncertified_subjects": []
+}

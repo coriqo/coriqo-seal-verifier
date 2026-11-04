@@ -1,0 +1,6 @@
+# v1.2: an approved daily payment limit and a per-payment limit.
+spec: coriqo.mandate/v1.2
+agent:
+  name: payout-agent
+max_transaction_usd_per_day: 250000
+max_transaction_usd: 25000.50

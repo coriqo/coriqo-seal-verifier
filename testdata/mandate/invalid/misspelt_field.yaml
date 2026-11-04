@@ -1,0 +1,6 @@
+# A typo must fail loudly, not become a mandate with no prohibited tools.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+tools:
+  prohibted: [issue_refund]

@@ -1,0 +1,6 @@
+# Written to a later v1 revision. A v1.0 reader accepts it, warns about the
+# field it does not know, and leaves that field out of the hash.
+spec: coriqo.mandate/v1.4
+agent:
+  name: refund-triage
+grace_period_s: 10

@@ -1,0 +1,6 @@
+# v1.2: "no approved limit" written out. Same document as leaving them out.
+spec: coriqo.mandate/v1.2
+agent:
+  name: refund-triage
+max_transaction_usd_per_day: null
+max_transaction_usd: null

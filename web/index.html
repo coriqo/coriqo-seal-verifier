@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; worker-src 'self'">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Coriqo seal verifier</title>
+<meta name="description" content="Check a sealed Coriqo record in your browser. Nothing is uploaded and the page makes no network request while it checks.">
+<link rel="icon" type="image/svg+xml" href="seal.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip-link" href="#check">Skip to the verifier</a>
+<div id="framed" role="alert">This page is open inside another site. Open it directly at its own address to check a file. File checking is switched off here.</div>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="./"><img src="seal.svg" width="28" height="28" alt="">Coriqo seal verifier</a>
+    <nav class="top-links" aria-label="Verifier">
+      <a href="#check">Check a file</a>
+      <a href="#commands">Run it on your machine</a>
+      <a href="#checks">What it checks</a>
+      <a href="https://github.com/coriqo/coriqo-seal-verifier">Source</a>
+    </nav>
+  </div>
+</header>
+<div class="official"><div class="wrap">Official address: <b>verify.coriqo.io</b>. A copy of this page at any other address is not Coriqo&rsquo;s. Check the address before you drop a file.</div></div>
+
+<main>
+<div class="wrap hero">
+  <svg class="seal-draw" viewBox="0 0 200 200" aria-hidden="true" focusable="false"><circle class="sd-ring" cx="100" cy="100" r="62" pathLength="1"/><circle class="sd-core" cx="100" cy="100" r="7"/></svg>
+  <div class="eyebrow">For examiners and auditors</div>
+  <h1>Check a sealed record yourself.</h1>
+  <p class="lead">Drop a Coriqo proof, certificate, bundle or PDF on this page. It checks the signature, the Merkle proof and the timestamp on your computer. The file is never uploaded, and the page makes no network request while it checks. The code is open: <a href="verify.js">verify.js</a> and <a href="verify-ui.js">verify-ui.js</a>.</p>
+  <div class="cta">
+    <a href="#check" class="btn btn-primary">Check a file</a>
+    <a href="#commands" class="btn btn-ghost">Run it on your machine</a>
+  </div>
+</div>
+
+<section id="check">
+  <div class="wrap">
+    <div class="eyebrow">In this page</div>
+    <h2>Check the sample, or your own file.</h2>
+    <div class="sample-row">
+      <button type="button" class="btn btn-primary" id="verify-sample">Check the sample</button>
+      <a class="btn btn-ghost" id="sample-dl" download="sample-proof.json">Download the sample only</a>
+    </div>
+    <p class="note">The sample is a made-up record for an invented &ldquo;Demo Bank&rdquo;, signed by a throwaway test key. The result will say the key is not Coriqo&rsquo;s published key, and that is correct. Change one character in the downloaded file and drop it back: the check that depends on it stops passing, and the result names that check.</p>
+    <p class="note" id="arrived-note" hidden>You followed a &ldquo;Verified by Coriqo&rdquo; link for checkpoint <code id="arrived-cp"></code>. Drop the file you were sent below. The result lists the checkpoints the file is sealed under, so you can see this one is among them.</p>
+
+    <label id="verify-drop" for="verify-file" class="dropzone">
+      <input type="file" id="verify-file" accept=".zip,.json,.pdf,application/zip,application/json,application/pdf" hidden>
+      <strong>Or drop a file here</strong>
+      <span>A <code>proof.json</code> or <code>certificate.json</code>, a <code>coriqo-bundle-v1.zip</code>, or a PDF downloaded from Coriqo: an examiner package, a sealed deliverable or a report with its download receipt.</span>
+    </label>
+    <p id="verify-ed25519-warning" class="warn-strip" hidden>This browser doesn&rsquo;t support Ed25519, so the signature check can&rsquo;t run here. The other checks still run, and the result names the one that was skipped. For the full check, use the commands below.</p>
+    <div id="verify-out" class="verify-out" aria-live="polite"></div>
+  </div>
+</section>
+
+<section id="commands">
+  <div class="wrap">
+    <div class="eyebrow">On your machine</div>
+    <h2>Three commands, then try to break it.</h2>
+    <p class="lead">You need Python 3.10 or newer and git. After the first command you can disconnect from the network.</p>
+    <ol class="steps">
+      <li><p>Get the verifier and its one dependency.</p><pre>git clone https://github.com/coriqo/coriqo-seal-verifier
+cd coriqo-seal-verifier &amp;&amp; pip install cryptography</pre></li>
+      <li><p>Check the sample record.</p><pre>python verify_proof.py testdata/proof.json</pre></li>
+      <li><p>Change one character of the sealed event hash and check again. The output shows <code>[FAIL] Merkle inclusion proof</code> and the command exits 1.</p><pre>python -c "import json;d=json.load(open('testdata/proof.json'));h=d['leaf_input'];d['leaf_input']=('1' if h[0]=='0' else '0')+h[1:];json.dump(d,open('edited.json','w'))"
+python verify_proof.py edited.json</pre></li>
+    </ol>
+  </div>
+</section>
+
+<section id="checks">
+  <div class="wrap">
+    <div class="eyebrow">What it checks</div>
+    <h2>What each check means.</h2>
+    <table class="vf-table">
+      <tr><th>Proof fields match the signed checkpoint body</th><td>The tree root and size the file quotes are the ones the signature covers, not values added later.</td></tr>
+      <tr><th>Merkle inclusion proof</th><td>This event&rsquo;s hash is one of the events the checkpoint sealed.</td></tr>
+      <tr><th>Checkpoint signature</th><td>The checkpoint was signed by the key the file names, and none of its bytes have changed since.</td></tr>
+      <tr><th>Timestamp consistency</th><td>The time the file states matches the time inside the signed checkpoint.</td></tr>
+      <tr><th>Spec version</th><td>The file names the version of the format it was written to. A verifier refuses a major version it doesn&rsquo;t implement instead of giving a verdict.</td></tr>
+    </table>
+    <p class="note">The full rules, written so anyone can build their own verifier, are in <a href="https://github.com/coriqo/coriqo-seal-verifier/blob/main/SPEC.md">SPEC.md</a>.</p>
+
+    <h3 id="keyring" class="vf-sub">Coriqo&rsquo;s signing key fingerprints</h3>
+    <p class="note">A pass shows the file wasn&rsquo;t changed. To confirm Coriqo signed it, compare the key fingerprint in the result with the list below. This list ships with the page in <a href="keyring.js">keyring.js</a>; the page never fetches it.</p>
+    <ul class="vf-keys" id="keyring-list"><li>Loading the key list&hellip;</li></ul>
+
+    <div class="facts">
+      <div><b>Free and open</b><span>Apache 2.0 license. Read, run or fork it.</span></div>
+      <div><b>No account</b><span>No sign-in, from Coriqo or anyone.</span></div>
+      <div><b>Never contacts Coriqo</b><span>The page is built so a network request fails. Read the code to confirm it.</span></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Release <b id="ver">dev</b>. Rebuild and compare: <code>sh web/build.sh</code>, then compare <code>dist/SHA256SUMS</code> with the one in the release.</p>
+    <p>&ldquo;Coriqo&rdquo; and the seal mark are Coriqo&rsquo;s trademarks (see TRADEMARKS.md). A pass from a changed copy is that copy&rsquo;s result, not Coriqo&rsquo;s.</p>
+  </div>
+</footer>
+
+<script src="keyring.js"></script>
+<script src="sample.js"></script>
+<script src="verify.js"></script>
+<script src="verify-ui.js"></script>
+<script src="page-ui.js"></script>
+</body>
+</html>

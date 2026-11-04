@@ -1,0 +1,5 @@
+spec: coriqo.mandate/v1.3
+agent:
+  name: payout-agent
+asset_scope:
+  venues: [coinbase-prime, coinbase-prime]

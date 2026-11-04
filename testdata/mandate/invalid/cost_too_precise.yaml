@@ -1,0 +1,5 @@
+# JSON Schema cannot see this one either: seven decimal places.
+spec: coriqo.mandate/v1
+agent:
+  name: refund-triage
+max_cost_usd: 0.0000001
