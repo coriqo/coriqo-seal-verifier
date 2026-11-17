@@ -415,6 +415,8 @@ A checkpoint is an Ed25519 signature over a **signed tree head** (`sth_body`).
 | `tree_version` | integer | from v2 | Tree construction; absent means 1 (§5.2) |
 | `algorithm` | string | from v3 | Signature algorithm; absent means `ed25519` (§6.1) |
 | `continuity` | object | when present | Attested obligation counts and coverage gaps (§8.3) |
+| `completeness` | object | when present | Root and count of the gap event history, and the gaps still open (§8.5) |
+| `completeness_policy` | object | when present | `max_open_gap_hours`, the age limit for an open gap (§8.5) |
 | `cohort_rollup` | object | when present | Attested cohort oversight rollup |
 | `package_attestation` | object | when present | Binds a sealed examiner package to this checkpoint (§6.2) |
 | `access_log` | object | when present | Signs the sealed-read log (§4.5) |
@@ -931,6 +933,130 @@ certificate carries (a withholding neither fails the certificate nor is
 excused by it), and a passing verdict MUST state that its range was reduced,
 with the count. A proof over a narrower set is still a proof, but a reader must
 not be able to mistake it for one over the whole period.
+
+### 8.5 Sealed gap history
+
+A checkpoint's signed body MAY carry `completeness`:
+`{gap_events_root, gap_event_count, open_gaps, device_seq_heads}`. The root is a
+hash chain over every gap event the producer has recorded (a gap `opened`,
+`closed` or `waived`), so a gap that was opened and later closed, deleted or
+rewritten cannot disappear from the record without the root changing. The
+certificate carries the events themselves as a top-level `gap_events` array,
+outside `statement`, in the order recorded. Each event is
+`{device_id, seq_start, seq_end, event, at, reason, actor, event_hash}`.
+
+```
+event_hash = sha256(canonical JSON of the event without `event_hash`)   (§3)
+root_0     = sha256(b"")                                                 (hex)
+root_n     = sha256(bytes.fromhex(root_{n-1}) || bytes.fromhex(event_hash_n))
+```
+
+`open_gaps` is a list of `{device_id, seq_start, seq_end, opened_at}`. The age
+limit is `max_open_gap_hours`, read from the signed body's `completeness_policy`
+and nowhere else: the generic `policy` field is not a fallback.
+
+**Field forms (MUST).** `device_id` is a non-empty string, in events and in
+`open_gaps`. `seq_start` and `seq_end` are whole numbers from 0 to 2^53 - 1 with
+`seq_start <= seq_end`. A verifier written in JavaScript cannot read a number
+above 2^53 - 1 exactly, so every verifier rejects one, with the same reason.
+`at` and `opened_at` are RFC 3339 UTC in exactly one spelling,
+`YYYY-MM-DDTHH:MM:SS[.ffffff]Z`: a trailing `Z`, no offset, no basic-format
+date, and a fraction of exactly six digits when there is one. The checkpoint's
+own `issued_at` is the producer's `isoformat()` of a UTC time, so it is also
+accepted as `+00:00`, with or without the six-digit fraction, and in no other
+form. `gap_events_root` is exactly 64 lowercase hexadecimal characters. A
+producer writes integers only. JSON gives a verifier in JavaScript no way to
+tell `1.0` from `1`, so a float written as `1.0` is rejected by the reference
+verifier and, in a browser, caught by its exact-number check and by a stored
+hash that no longer matches. Both fail; the wording differs.
+
+**Rule 8.5.1 (MUST).** A certificate in which no checkpoint carries
+`completeness` MUST be reported as "not recorded". It adds no passing and no
+failing check: older checkpoints were never rewritten, and the absence says
+nothing about whether gaps were opened and closed.
+
+**Rule 8.5.2 (MUST).** If any checkpoint signs `completeness`, the verifier
+MUST fail the check `sealed gap history` when any of these holds. When a field
+form above is broken, only the form failures are reported and nothing else runs.
+
+- the certificate has no `gap_events` list (`a checkpoint signs a gap history,
+  but the bundle carries no list of gap events to check it against`);
+- an event breaks a field form (`gap event N has no valid device`, `... has no
+  valid sequence range`, `... a sequence number above 9007199254740991 ...`,
+  `... an unknown event type ...`, `... a time that is not RFC 3339 UTC ...`)
+  or cannot be written as canonical JSON because a string holds a lone
+  surrogate (`gap event N cannot be canonicalised`);
+- an event's `event_hash` does not match its contents (`gap event N was changed
+  after it was recorded`);
+- a checkpoint signs a `gap_event_count` greater than the events carried
+  (`Gap events were removed from the bundle`), the events carried exceed the
+  closing checkpoint's count (`Events after the signed head are not sealed`), or
+  a later checkpoint signs a smaller count than an earlier one (`The gap
+  history only grows`);
+- the first `gap_event_count` events do not reproduce the signed
+  `gap_events_root` (`The gap history was altered, reordered or had events
+  deleted`), checked for every checkpoint that signs one;
+- once any checkpoint signs `completeness`, a later organisation-wide
+  checkpoint does not (`a later checkpoint no longer records the gap history`).
+  A checkpoint whose signed `subject` begins `version:` is version-scoped and is
+  exempt: the producer builds `completeness` for organisation-wide checkpoints
+  only. The subject is inside the signed body, so the exemption is visible to a
+  reader; a signer can label a checkpoint version-scoped, as it can choose any
+  other signed field. The closing checkpoint is the last organisation-wide one;
+- an event closes or waives a range that no earlier `opened` event covers and
+  leaves open (`A gap cannot be closed that was never opened`). A close MUST lie
+  inside one open range. Closing part of a range is allowed and leaves the rest
+  open, each remainder keeping the time its `opened` event was recorded. A
+  producer never opens overlapping ranges, and gaps are bounded by stored events
+  on both sides, so two open ranges are never adjacent;
+- the closing checkpoint's signed `open_gaps` differ, per device, from the
+  ranges still open after replaying the events (`the signed open gaps (...) do
+  not match the gaps still open after replaying the events (...)`). The two lists
+  are compared range by range, not merged: adjacent ranges stay separate;
+- a signed open gap is not a list of objects with a valid device and a valid
+  range (`the signed open gaps contain a malformed range`);
+- a signed `opened_at` is missing or not in the one form (`the age of an open
+  gap cannot be worked out`), or differs from the `at` of the `opened` event that
+  opened that range (`the signed opened_at does not match the time its 'opened'
+  event was recorded`);
+- the closing checkpoint's `issued_at` is not a UTC time (`the age of an open
+  gap cannot be worked out`), or an open gap was opened after it
+  (`was opened after the closing checkpoint was issued`);
+- `completeness_policy` is present and its `max_open_gap_hours` is not a finite
+  number greater than 0, or `completeness_policy` is not an object (`the signed
+  age limit is malformed`);
+- an open gap's age exceeds `max_open_gap_hours` (`has been open N hours, longer
+  than the M hours the signed policy allows`).
+
+The age of an open gap is measured from the `at` of the `opened` event that
+opened it, replayed from the committed history, to the closing checkpoint's own
+signed `issued_at`. The `opened_at` in `open_gaps` is a claim that must match; it
+is never used on its own. Hours are printed to one decimal, rounded half to
+even on the exact value.
+
+**Rule 8.5.3 (MUST).** With no `max_open_gap_hours` in the signed body, an open
+gap is reported with its age and is not failed (`The checkpoint records no age
+limit, so this is reported but not failed`). A verifier MUST NOT supply a limit
+of its own.
+
+**What a pass proves.** The `gap_events` list is exactly the history the
+signing key committed to at each signed checkpoint, in order and unaltered; the
+gaps the closing checkpoint calls open are the ones that history leaves open;
+each open gap's age is derived from times recorded in that signed history, not
+from a time the checkpoint merely states; and none is older than the signed limit
+at the closing checkpoint's time. Every later organisation-wide checkpoint still
+carries the history.
+
+**What a pass does not prove.** That every real gap was recorded: the producer
+decides what counts as an event, and a gap it never recorded is not in the root,
+including any gap before the first sealed checkpoint. That a signer did not write
+a coherent but weak history, in one checkpoint, from the start: the check finds
+inconsistency, not omission. That a closed or waived gap was resolved for a good
+reason: `reason` and `actor` are the producer's statements. That `at` is the true
+time an event happened: it is the producer's clock. `device_seq_heads` is signed
+but not checked here. Events recorded after the closing checkpoint are not
+covered. Age is measured at the checkpoint's signed time, not at the time of
+verification, so a gap still open today may be older than the check reports.
 
 ---
 

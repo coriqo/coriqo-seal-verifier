@@ -1,0 +1,92 @@
+{
+ "statement": {
+  "subject": "t",
+  "period": {
+   "from": "2026-11-17T12:00:00+00:00",
+   "to": "2026-11-17T12:00:00+00:00"
+  },
+  "checkpoint_count": 1,
+  "checkpoints": [
+   {
+    "checkpoint_id": "cp1",
+    "key_id": "test-key",
+    "sth_body": {
+     "issued_at": "2026-11-17T12:00:00+00:00",
+     "length": 10,
+     "root_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+     "completeness": {
+      "gap_events_root": "108fdebb4c97ea558674930c73ad432ad7ab58f47f94a499dcf4ee1606e34177",
+      "gap_event_count": 3,
+      "open_gaps": [
+       {
+        "device_id": "dev-1",
+        "seq_start": 5,
+        "seq_end": 9,
+        "opened_at": "2026-11-17T06:00:00Z"
+       }
+      ],
+      "device_seq_heads": {
+       "dev-1": 40
+      }
+     },
+     "completeness_policy": {
+      "max_open_gap_hours": 24
+     }
+    },
+    "signature_hex": "34edc711956cfb6bf86c8c9feaff0a18a0757211f406534da37ba9134e62aad34d71cc1efd582fdecdfdc881a30861f47cafdb7cf49bc21d6a8a539f76ecec04"
+   }
+  ],
+  "linkage": [],
+  "linkage_status": "not_applicable",
+  "linkage_unbroken": true,
+  "coverage": {
+   "sealed_event_count": 10,
+   "events_added_in_period": 0,
+   "obligations_in_period": {},
+   "obligations_closing": {}
+  },
+  "coverage_gaps": [],
+  "gap_summary": {
+   "total": 0
+  }
+ },
+ "key_id": "test-key",
+ "signature_hex": "68fddfc88f79e2ada91771890b63f43d3fd2cd27c02c54187e6f5c6e28b8fd797ab118c81f4c0b168987e4a907dc348fce5d4f42badccd21f45bdd4d33e3a60c",
+ "public_keys": {
+  "test-key": {
+   "pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA50FbL1Lr8HIgCQEXUVqWie2ZJFTfubpWCQDMYvIZeIw=\n-----END PUBLIC KEY-----\n"
+  }
+ },
+ "gap_events": [
+  {
+   "device_id": "dev-1",
+   "seq_start": 5,
+   "seq_end": 9,
+   "event": "opened",
+   "at": "2026-11-17T06:00:00Z",
+   "reason": "",
+   "actor": "reconcile",
+   "event_hash": "400364bc804774ab9f9ed06cf409615497c9fcd6a7998fdf11ee43c094eb3d19"
+  },
+  {
+   "device_id": "dev-1",
+   "seq_start": 1,
+   "seq_end": 2,
+   "event": "opened",
+   "at": "2026-11-16T01:00:00Z",
+   "reason": "",
+   "actor": "reconcile",
+   "event_hash": "aebf8fd23df1ca4ed61448534d54823f03b89cbad27a9a1ce014506f480b8471"
+  },
+  {
+   "device_id": "dev-1",
+   "seq_start": 1,
+   "seq_end": 2,
+   "event": "closed",
+   "at": "2026-11-16T02:00:00Z",
+   "reason": "",
+   "actor": "reconcile",
+   "event_hash": "e85208eeecc8115cb046cdb27a2c42e1b4748b45df10c05818a607bf56fcb195"
+  }
+ ]
+}
