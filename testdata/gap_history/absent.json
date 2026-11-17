@@ -1,0 +1,43 @@
+{
+ "statement": {
+  "subject": "t",
+  "period": {
+   "from": "2026-11-17T12:00:00+00:00",
+   "to": "2026-11-17T12:00:00+00:00"
+  },
+  "checkpoint_count": 1,
+  "checkpoints": [
+   {
+    "checkpoint_id": "cp1",
+    "key_id": "test-key",
+    "sth_body": {
+     "issued_at": "2026-11-17T12:00:00+00:00",
+     "length": 10,
+     "root_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "signature_hex": "bc9c32e5f863cc47cf16ed21e4c709d69f9fe82f5ea0f6036b63a2b301953d18aef84f9515bef5ec00ee833fdd24d1a360d1fc74409792c622f6377ecbd1cd02"
+   }
+  ],
+  "linkage": [],
+  "linkage_status": "not_applicable",
+  "linkage_unbroken": true,
+  "coverage": {
+   "sealed_event_count": 10,
+   "events_added_in_period": 0,
+   "obligations_in_period": {},
+   "obligations_closing": {}
+  },
+  "coverage_gaps": [],
+  "gap_summary": {
+   "total": 0
+  }
+ },
+ "key_id": "test-key",
+ "signature_hex": "df8102d818acc992f8a88c230787702b1924c1809e8a2f2b63207376979df8bdb7967e722434206dd105a9bc99503906fdb1b27cd22df2c480ca627e1e6f6709",
+ "public_keys": {
+  "test-key": {
+   "pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA50FbL1Lr8HIgCQEXUVqWie2ZJFTfubpWCQDMYvIZeIw=\n-----END PUBLIC KEY-----\n"
+  }
+ },
+ "gap_events": []
+}

@@ -201,10 +201,12 @@ import argparse
 import hashlib
 import io
 import json
+import math
 import os
+import re
 import sys
 import zipfile
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -2383,6 +2385,386 @@ def _check_certificate_coverage(cert: dict, results: list) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Sealed gap history (completeness packet C1, SPEC.md section 8.5)
+#
+# A checkpoint's signed body may carry `completeness`: a hash-chain root over
+# every gap event (opened / closed / waived) the producer has ever recorded,
+# the count of those events, and the gaps still open. The bundle ships the
+# events themselves as `gap_events`. Because the root and count are inside
+# the signed body, a gap that was deleted or rewritten after the fact cannot
+# be hidden: the events either hash to the signed root or they do not.
+#
+#   root_0 = sha256(b"")                       (hex)
+#   root_n = sha256(root_{n-1} || event_hash_n) (raw bytes, hex out)
+#   event_hash = sha256(canonical JSON of the event minus `event_hash`)
+#
+# A certificate in which no checkpoint carries `completeness` says "not
+# recorded". That is neither a pass nor a fail: older checkpoints were never
+# rewritten.
+#
+# The age of an open gap is never taken on trust. It is the `at` of the
+# 'opened' event that opened it, replayed from the history the root commits
+# to; the `opened_at` the checkpoint signs must equal it.
+#
+# This block is mirrored line for line by web/verify.js. Both engines must give
+# the same verdict and the same words on the same bytes.
+# ---------------------------------------------------------------------------
+
+_GAP_MAX_SEQ = 2 ** 53 - 1
+_GAP_KINDS = ("opened", "closed", "waived")
+_GAP_TIME_FORM = "YYYY-MM-DDTHH:MM:SS[.ffffff]Z"
+_GAP_AT_RE = re.compile(r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{6}))?Z")
+# The checkpoint's own `issued_at` is written by the producer as isoformat() of a
+# UTC datetime: "+00:00", and no fraction when the microseconds are zero.
+_GAP_ISSUED_RE = re.compile(
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{6}))?(?:Z|\+00:00)")
+_GAP_EPOCH = datetime(1, 1, 1)
+_GAP_LIMIT_MALFORMED = "the signed age limit is malformed"
+
+
+def _gap_event_hash(event: dict) -> str:
+    body = {k: v for k, v in event.items() if k != "event_hash"}
+    return hashlib.sha256(_canonical_bytes(body)).hexdigest()
+
+
+def _gap_root_chain(hashes: list[str]) -> list[str]:
+    """roots[n] is the root after n events; roots[0] is sha256 of nothing."""
+    roots = [hashlib.sha256(b"").hexdigest()]
+    for h in hashes:
+        roots.append(hashlib.sha256(bytes.fromhex(roots[-1]) + bytes.fromhex(h)).hexdigest())
+    return roots
+
+
+def _gap_time(value, issued: bool = False):
+    """(seconds, microseconds) for the one accepted spelling, else None. Seconds
+    count from 0001-01-01; only differences and equality are ever used."""
+    if not isinstance(value, str):
+        return None
+    m = (_GAP_ISSUED_RE if issued else _GAP_AT_RE).fullmatch(value)
+    if not m:
+        return None
+    try:
+        dt = datetime(*(int(m.group(i)) for i in range(1, 7)))
+    except ValueError:
+        return None
+    return ((dt - _GAP_EPOCH) // timedelta(seconds=1), int(m.group(7) or 0))
+
+
+def _gap_micros_between(later, earlier) -> int:
+    return (later[0] - earlier[0]) * 1_000_000 + (later[1] - earlier[1])
+
+
+def _gap_hours_text(micros: int) -> str:
+    """Hours to one decimal, rounded half to even on the exact value, so both
+    engines print the same digits (no float formatting involved)."""
+    q, r = divmod(micros, 360_000_000)
+    if 2 * r > 360_000_000 or (2 * r == 360_000_000 and q % 2 == 1):
+        q += 1
+    return f"{q // 10}.{q % 10}"
+
+
+def _gap_number_text(v) -> str:
+    return str(int(v)) if isinstance(v, float) and v.is_integer() and abs(v) < 1e15 else repr(v)
+
+
+def _gap_valid_device(v) -> bool:
+    return isinstance(v, str) and v != ""
+
+
+def _gap_seq_problem(start, end) -> str | None:
+    """None when both are whole numbers in 0..2^53-1 with start <= end."""
+    for v in (start, end):
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+            return "no valid sequence range"
+    if start > _GAP_MAX_SEQ or end > _GAP_MAX_SEQ:
+        return f"a sequence number above {_GAP_MAX_SEQ}, which this verifier cannot check exactly"
+    if start > end:
+        return "no valid sequence range"
+    return None
+
+
+def _gap_structure_problems(events: list[dict]) -> list[str]:
+    """Everything that must hold of one event before it can be hashed or replayed.
+    When any fails, the rest of the check does not run, so both engines say the same."""
+    problems: list[str] = []
+    for i, ev in enumerate(events, 1):
+        if not _gap_valid_device(ev.get("device_id")):
+            problems.append(f"gap event {i} has no valid device")
+        bad = _gap_seq_problem(ev.get("seq_start"), ev.get("seq_end"))
+        if bad:
+            problems.append(f"gap event {i} has {bad}")
+        if not (isinstance(ev.get("event"), str) and ev["event"] in _GAP_KINDS):
+            problems.append(f"gap event {i} has an unknown event type (expected opened, closed or waived)")
+        if _gap_time(ev.get("at")) is None:
+            problems.append(f"gap event {i} has a time that is not RFC 3339 UTC ({_GAP_TIME_FORM})")
+        try:
+            _canonical_bytes({k: v for k, v in ev.items() if k != "event_hash"})
+        except UnicodeEncodeError:
+            problems.append(f"gap event {i} cannot be canonicalised")
+    return problems
+
+
+def _derive_open_ranges(events: list[dict], problems: list[str]) -> dict[str, list[list]]:
+    """Replay the events. A closed or waived range must sit inside one range
+    that is open at that moment; it may narrow it (the rest stays open, and
+    keeps the time its 'opened' event was recorded). Each open range is
+    [seq_start, seq_end, opened_at]."""
+    open_by_device: dict[str, list[list]] = {}
+    for i, ev in enumerate(events, 1):
+        device, kind = ev["device_id"], ev["event"]
+        start, end = ev["seq_start"], ev["seq_end"]
+        where = f"gap event {i} (device {device}, #{start}-#{end})"
+        ranges = open_by_device.setdefault(device, [])
+        if kind == "opened":
+            ranges.append([start, end, _gap_time(ev["at"])])
+            continue
+        at = next((n for n, r in enumerate(ranges) if r[0] <= start and end <= r[1]), None)
+        if at is None:
+            problems.append(
+                f"{where} is recorded as {kind}, but no earlier 'opened' event covers that "
+                "range and leaves it open. A gap cannot be closed that was never opened.")
+            continue
+        host = ranges.pop(at)
+        if host[0] < start:
+            ranges.append([host[0], start - 1, host[2]])
+        if end < host[1]:
+            ranges.append([end + 1, host[1], host[2]])
+    return open_by_device
+
+
+def _gap_show(ranges) -> str:
+    return ", ".join(f"#{r[0]}-#{r[1]}" for r in ranges) or "none"
+
+
+def _gap_is_version_scoped(body: dict) -> bool:
+    subject = body.get("subject")
+    return isinstance(subject, str) and subject.startswith("version:")
+
+
+def _gap_signed_open_gaps(final: dict):
+    """The signed open gaps as a list, or None when they are malformed."""
+    gaps = final.get("open_gaps")
+    if gaps is None:
+        return []
+    if not isinstance(gaps, list):
+        return None
+    for g in gaps:
+        if not isinstance(g, dict) or not _gap_valid_device(g.get("device_id")):
+            return None
+        if _gap_seq_problem(g.get("seq_start"), g.get("seq_end")):
+            return None
+    return gaps
+
+
+def _gap_age_limit(body: dict):
+    """(limit, malformed). limit is None when the checkpoint signs none."""
+    if "completeness_policy" not in body:
+        return None, False
+    policy = body["completeness_policy"]
+    if not isinstance(policy, dict):
+        return None, True
+    if "max_open_gap_hours" not in policy:
+        return None, False
+    v = policy["max_open_gap_hours"]
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None, True
+    try:
+        if not math.isfinite(v) or v <= 0 or not math.isfinite(float(v) * 3_600_000_000.0):
+            return None, True
+    except OverflowError:
+        return None, True
+    return v, False
+
+
+def _analyse_gap_history(cert: dict) -> dict:
+    """
+    Returns {"recorded": bool, "problems": [...], "findings": [...], "summary": str}.
+    `problems` fail the certificate; `findings` are shown but do not fail.
+    """
+    statement = cert.get("statement") or {}
+    cps = [cp for cp in (statement.get("checkpoints") or []) if isinstance(cp, dict)]
+
+    def body_of(cp):
+        b = cp.get("sth_body")
+        return b if isinstance(b, dict) else {}
+
+    recorded = [(cp, body_of(cp).get("completeness")) for cp in cps]
+    recorded = [(cp, c) for cp, c in recorded if c is not None]
+    if not recorded:
+        return {"recorded": False, "problems": [], "findings": [], "summary": ""}
+
+    problems: list[str] = []
+    findings: list[str] = []
+    events = cert.get("gap_events")
+    if not isinstance(events, list) or not all(isinstance(e, dict) for e in events):
+        return {"recorded": True, "summary": "", "findings": [], "problems": [
+            "a checkpoint signs a gap history, but the bundle carries no list of gap events to check it against"]}
+
+    structure = _gap_structure_problems(events)
+    if structure:
+        return {"recorded": True, "summary": "", "findings": [], "problems": structure}
+
+    # (a) every event hashes to its stated hash; the chain reproduces each signed root.
+    hashes = []
+    for i, ev in enumerate(events, 1):
+        expected = _gap_event_hash(ev)
+        if ev.get("event_hash") != expected:
+            problems.append(
+                f"gap event {i} was changed after it was recorded: its stored hash does not "
+                "match its contents")
+        hashes.append(expected)
+    roots = _gap_root_chain(hashes)
+
+    previous_count = -1
+    for cp, comp in recorded:
+        label = f"checkpoint {cp.get('checkpoint_id')}"
+        if not isinstance(comp, dict):
+            problems.append(f"{label} has a malformed completeness block")
+            continue
+        count, root = comp.get("gap_event_count"), comp.get("gap_events_root")
+        if (not isinstance(count, int) or isinstance(count, bool) or count < 0 or not isinstance(root, str)
+                or re.fullmatch(r"[0-9a-f]{64}", root) is None):
+            problems.append(f"{label} has no valid gap event count and root")
+            continue
+        if count < previous_count:
+            problems.append(
+                f"{label} signs {count} gap event(s), fewer than an earlier checkpoint signed "
+                f"({previous_count}). The gap history only grows; events were removed.")
+        previous_count = max(previous_count, count)
+        if count > len(events):
+            problems.append(
+                f"{label} signed {count} gap event(s) but the bundle carries only {len(events)}. "
+                "Gap events were removed from the bundle.")
+        elif roots[count] != root:
+            problems.append(
+                f"the first {count} gap event(s) do not reproduce the root signed in {label}. "
+                "The gap history was altered, reordered or had events deleted.")
+
+    # Once a checkpoint signs a gap history, every later org-wide checkpoint must. A
+    # version-scoped checkpoint (subject "version:<id>") never carries one: the producer
+    # builds the block for the organisation's checkpoints only.
+    seen = False
+    for cp in cps:
+        body = body_of(cp)
+        if body.get("completeness") is not None:
+            seen = True
+        elif seen and not _gap_is_version_scoped(body):
+            problems.append(
+                f"a later checkpoint no longer records the gap history: checkpoint {cp.get('checkpoint_id')}")
+    org_wide = [cp for cp in cps if not _gap_is_version_scoped(body_of(cp))]
+    closing = body_of((org_wide or cps)[-1])
+    final = closing.get("completeness")
+    if not isinstance(final, dict):
+        return {"recorded": True, "problems": problems, "findings": findings, "summary": ""}
+    if (isinstance(final.get("gap_event_count"), int) and not isinstance(final["gap_event_count"], bool)
+            and len(events) > final["gap_event_count"]):
+        problems.append(
+            f"the bundle carries {len(events)} gap event(s) but the closing checkpoint signed "
+            f"only {final['gap_event_count']}. Events after the signed head are not sealed.")
+
+    # (b) replay, then compare with the open gaps the closing checkpoint signed.
+    derived_by_device = _derive_open_ranges(events, problems)
+    derived = {d: sorted(rs, key=lambda r: (r[0], r[1], r[2])) for d, rs in derived_by_device.items() if rs}
+    signed = _gap_signed_open_gaps(final)
+    if signed is None:
+        problems.append("the signed open gaps contain a malformed range")
+    else:
+        claimed: dict[str, list] = {}
+        for g in signed:
+            claimed.setdefault(g["device_id"], []).append(g)
+        for device in sorted(set(derived) | set(claimed)):
+            a = derived.get(device, [])
+            b = sorted(claimed.get(device, []), key=lambda g: (g["seq_start"], g["seq_end"], _gap_time(g.get("opened_at")) or (-1, 0)))
+            if [(r[0], r[1]) for r in a] != [(g["seq_start"], g["seq_end"]) for g in b]:
+                problems.append(
+                    f"device {device}: the signed open gaps ({_gap_show([(g['seq_start'], g['seq_end']) for g in b])}) "
+                    f"do not match the gaps still open after replaying the events ({_gap_show(a)})")
+                continue
+            for r, g in zip(a, b):
+                name = f"device {device} #{r[0]}-#{r[1]}"
+                opened = _gap_time(g.get("opened_at"))
+                if opened is None:
+                    problems.append(
+                        f"open gap {name}: the age of an open gap cannot be worked out, because its "
+                        f"signed opened_at is missing or not in the form {_GAP_TIME_FORM}")
+                elif opened != r[2]:
+                    problems.append(
+                        f"open gap {name}: the signed opened_at does not match the time its "
+                        "'opened' event was recorded")
+
+    # (c) age, from the recorded time of the 'opened' event, measured at the closing
+    # checkpoint's own signed time.
+    limit, malformed_limit = _gap_age_limit(closing)
+    if malformed_limit:
+        problems.append(_GAP_LIMIT_MALFORMED)
+    issued = _gap_time(closing.get("issued_at"), issued=True)
+    open_count = 0
+    for device in derived:
+        for r in derived[device]:
+            open_count += 1
+            name = f"device {device} #{r[0]}-#{r[1]}"
+            if issued is None:
+                problems.append(
+                    f"open gap {name}: the age of an open gap cannot be worked out, because the closing "
+                    "checkpoint's issued_at is missing or not a UTC time")
+                continue
+            micros = _gap_micros_between(issued, r[2])
+            if micros < 0:
+                problems.append(f"open gap {name} was opened after the closing checkpoint was issued")
+                continue
+            age = _gap_hours_text(micros)
+            if malformed_limit:
+                continue
+            if limit is None:
+                findings.append(
+                    f"open gap {name}: open {age} hours. The checkpoint records no age "
+                    "limit, so this is reported but not failed")
+            elif float(micros) > float(limit) * 3_600_000_000.0:
+                problems.append(
+                    f"open gap {name} has been open {age} hours, longer than the "
+                    f"{_gap_number_text(limit)} hours the signed policy allows")
+            else:
+                findings.append(
+                    f"open gap {name}: open {age} hours, within the {_gap_number_text(limit)} hour limit")
+
+    summary = (f"{len(events)} gap event(s) reproduce the signed root; "
+               f"{open_count} gap(s) still open")
+    return {"recorded": True, "problems": problems, "findings": findings, "summary": summary}
+
+
+def _check_certificate_gap_history(cert: dict, results: list) -> None:
+    """Adds a result only when a checkpoint signs a gap history. A certificate
+    with no `completeness` block gets no pass and no fail (see the readout)."""
+    analysis = _analyse_gap_history(cert)
+    if not analysis["recorded"]:
+        return
+    problems = analysis["problems"]
+    results.append((
+        "sealed gap history",
+        not problems,
+        " | ".join(problems) if problems else analysis["summary"],
+    ))
+
+
+def _print_gap_history(cert: dict) -> None:
+    """Gaps and silence are shown even when everything passes."""
+    analysis = _analyse_gap_history(cert)
+    print("-" * 60)
+    print("Sealed gap history")
+    print("-" * 60)
+    if not analysis["recorded"]:
+        print("  not recorded — no checkpoint in this certificate signs a gap history,")
+        print("  so nothing here can be said about gaps that were opened and later closed.")
+        print()
+        return
+    for line in analysis["findings"]:
+        print(f"  · {line}")
+    if not analysis["findings"]:
+        print("  · no gap is open")
+    print()
+
+
+# ---------------------------------------------------------------------------
 # Key succession (SPEC.md §9.3)
 #
 # A certificate's checkpoints may span more than one key_id, because signing
@@ -3002,6 +3384,7 @@ def verify_certificate_dict(cert: dict, pubkey_path: str | None = None,
         return False
 
     _print_continuity_summary(cert)
+    _print_gap_history(cert)
     _print_withheld_checkpoints(cert)
     _print_certificate_anchors(cert)
     _print_certificate_tsa_timestamps(cert, tsa_ca_path)
@@ -3011,6 +3394,7 @@ def verify_certificate_dict(cert: dict, pubkey_path: str | None = None,
     _check_certificate_signatures(cert, results, pinned)
     _check_certificate_linkage(cert, results)
     _check_certificate_coverage(cert, results)
+    _check_certificate_gap_history(cert, results)
     _check_certificate_succession(cert, results, pinned)
     _check_certificate_timestamp_monotonicity(cert, results)
     _check_certificate_compliance_coverage(cert, results)

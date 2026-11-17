@@ -125,6 +125,11 @@
       bad: 'The seal on this record does not match its contents',
       ok: 'The signature matches the sealed contents, so nothing in it was edited after it was sealed.'
     },
+    'Sealed gap history': {
+      title: 'Gaps opened and closed are on the signed record',
+      bad: 'The gap history does not match what was signed',
+      ok: 'The gap events match the signed root, and the open gaps match what those events leave open.'
+    },
     'Timestamp consistency': {
       title: 'The time on this file is the time that was sealed',
       bad: 'The time on this file doesn\u2019t match the sealed time',

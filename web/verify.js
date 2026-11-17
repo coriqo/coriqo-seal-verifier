@@ -458,11 +458,16 @@
 
     checks.push(await checkLinkage(st, cps));
     checks.push(checkCoverage(st, cps));
+    var gapHistory = await analyseGapHistory(cert, cps);
+    if (gapHistory.recorded) {
+      checks.push({ name: 'Sealed gap history', state: gapHistory.problems.length ? 'fail' : 'pass',
+        detail: gapHistory.problems.length ? gapHistory.problems.join(' | ') : gapHistory.summary });
+    }
 
     return {
       kind: 'Continuity certificate',
       subject: st.subject,
-      summary: describeCertificate(st, cps),
+      summary: describeCertificate(st, cps).concat(gapHistoryRows(gapHistory)),
       checks: checks,
       gaps: st.coverage_gaps || [],
       excluded: st.excluded_checkpoints || [],
@@ -585,6 +590,389 @@
       detail: problems.length ? problems.join('; ')
         : 'every coverage and gap claim is backed by a signed checkpoint body'
     };
+  }
+
+  // SPEC.md §8.5 — sealed gap history. Mirrors verify_proof.py
+  // _analyse_gap_history line for line, failure strings included: an auditor
+  // reads them, and the parity tests compare the two verifiers on the same bytes.
+  //
+  //   root_0 = sha256(b"")  (hex)
+  //   root_n = sha256(root_{n-1} || event_hash_n)   (raw bytes, hex out)
+  //   event_hash = sha256(canonical JSON of the event minus `event_hash`)
+  //
+  // The age of an open gap is the `at` of the 'opened' event that opened it,
+  // replayed from the committed history; the signed `opened_at` must equal it.
+
+  var GAP_MAX_SEQ = 9007199254740991;
+  var GAP_KINDS = ['opened', 'closed', 'waived'];
+  var GAP_TIME_FORM = 'YYYY-MM-DDTHH:MM:SS[.ffffff]Z';
+  var GAP_AT_RE = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{6}))?Z$/;
+  // The checkpoint's own `issued_at` is isoformat() of a UTC datetime: "+00:00".
+  var GAP_ISSUED_RE = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]{6}))?(?:Z|\+00:00)$/;
+  var GAP_LIMIT_MALFORMED = 'the signed age limit is malformed';
+
+  function isObj(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+  function isInt(v) { return typeof v === 'number' && isFinite(v) && Math.floor(v) === v; }
+  function has(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+
+  // Strings sort by code point, as Python sorts them.
+  function cpCompare(a, b) {
+    var x = Array.from(a), y = Array.from(b), n = Math.min(x.length, y.length);
+    for (var i = 0; i < n; i++) {
+      var p = x[i].codePointAt(0), q = y[i].codePointAt(0);
+      if (p !== q) return p < q ? -1 : 1;
+    }
+    return x.length - y.length;
+  }
+
+  // A lone surrogate cannot be written as UTF-8, so Python cannot canonicalise it.
+  function hasLoneSurrogate(value) {
+    if (typeof value === 'string') {
+      for (var i = 0; i < value.length; i++) {
+        var c = value.charCodeAt(i);
+        if (c >= 0xd800 && c <= 0xdbff) {
+          var d = value.charCodeAt(i + 1);
+          if (d >= 0xdc00 && d <= 0xdfff) i++; else return true;
+        } else if (c >= 0xdc00 && c <= 0xdfff) {
+          return true;
+        }
+      }
+      return false;
+    }
+    if (Array.isArray(value)) return value.some(hasLoneSurrogate);
+    if (isObj(value)) {
+      return Object.keys(value).some(function (k) { return hasLoneSurrogate(k) || hasLoneSurrogate(value[k]); });
+    }
+    return false;
+  }
+
+  async function gapEventHash(ev) {
+    var body = {};
+    Object.keys(ev).forEach(function (k) { if (k !== 'event_hash') body[k] = ev[k]; });
+    return bytesToHex(await sha256(canonicalBytes(body)));
+  }
+
+  // roots[n] is the root after n events; roots[0] is the hash of nothing.
+  async function gapRootChain(hashes) {
+    var roots = [bytesToHex(await sha256(new Uint8Array(0)))];
+    for (var i = 0; i < hashes.length; i++) {
+      var prev = hexToBytes(roots[roots.length - 1]), h = hexToBytes(hashes[i]);
+      var joined = new Uint8Array(prev.length + h.length);
+      joined.set(prev, 0); joined.set(h, prev.length);
+      roots.push(bytesToHex(await sha256(joined)));
+    }
+    return roots;
+  }
+
+  function daysFromCivil(y, m, d) {
+    y -= m <= 2 ? 1 : 0;
+    var era = Math.floor(y / 400), yoe = y - era * 400;
+    var doy = Math.floor((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1;
+    return era * 146097 + yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+  }
+
+  // [seconds, microseconds] for the one accepted spelling, else null. Only
+  // differences and equality are used.
+  function gapTime(value, issued) {
+    if (typeof value !== 'string') return null;
+    var m = (issued ? GAP_ISSUED_RE : GAP_AT_RE).exec(value);
+    if (!m) return null;
+    var y = +m[1], mo = +m[2], d = +m[3], h = +m[4], mi = +m[5], s = +m[6];
+    var leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    var dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+    if (y < 1 || mo < 1 || mo > 12 || d < 1 || d > dim || h > 23 || mi > 59 || s > 59) return null;
+    return [daysFromCivil(y, mo, d) * 86400 + h * 3600 + mi * 60 + s, m[7] ? +m[7] : 0];
+  }
+
+  function sameTime(a, b) { return a[0] === b[0] && a[1] === b[1]; }
+  function cmpTime(a, b) { return a[0] - b[0] || a[1] - b[1]; }
+
+  function gapMicrosBetween(later, earlier) {
+    return (BigInt(later[0]) - BigInt(earlier[0])) * 1000000n + BigInt(later[1] - earlier[1]);
+  }
+
+  // Hours to one decimal, rounded half to even on the exact value.
+  function gapHoursText(micros) {
+    var unit = 360000000n, q = micros / unit, r = micros % unit;
+    if (2n * r > unit || (2n * r === unit && q % 2n === 1n)) q += 1n;
+    return (q / 10n).toString() + '.' + (q % 10n).toString();
+  }
+
+  function gapNumberText(v) { return String(v); }
+
+  function gapValidDevice(v) { return typeof v === 'string' && v !== ''; }
+
+  // null when both are whole numbers in 0..2^53-1 with start <= end.
+  function gapSeqProblem(start, end) {
+    if (!isInt(start) || start < 0 || !isInt(end) || end < 0) return 'no valid sequence range';
+    if (start > GAP_MAX_SEQ || end > GAP_MAX_SEQ) {
+      return 'a sequence number above ' + GAP_MAX_SEQ + ', which this verifier cannot check exactly';
+    }
+    if (start > end) return 'no valid sequence range';
+    return null;
+  }
+
+  // Everything that must hold of one event before it can be hashed or replayed.
+  // When any fails, the rest of the check does not run.
+  function gapStructureProblems(events) {
+    var problems = [];
+    events.forEach(function (ev, idx) {
+      var i = idx + 1;
+      if (!gapValidDevice(ev.device_id)) problems.push('gap event ' + i + ' has no valid device');
+      var bad = gapSeqProblem(ev.seq_start, ev.seq_end);
+      if (bad) problems.push('gap event ' + i + ' has ' + bad);
+      if (!(typeof ev.event === 'string' && GAP_KINDS.indexOf(ev.event) >= 0)) {
+        problems.push('gap event ' + i + ' has an unknown event type (expected opened, closed or waived)');
+      }
+      if (gapTime(ev.at, false) === null) {
+        problems.push('gap event ' + i + ' has a time that is not RFC 3339 UTC (' + GAP_TIME_FORM + ')');
+      }
+      var body = {};
+      Object.keys(ev).forEach(function (k) { if (k !== 'event_hash') body[k] = ev[k]; });
+      if (hasLoneSurrogate(body)) problems.push('gap event ' + i + ' cannot be canonicalised');
+    });
+    return problems;
+  }
+
+  // Replay the events. A closed or waived range must sit inside one range that
+  // is open at that moment; it may narrow it (the rest stays open and keeps the
+  // time its 'opened' event was recorded). Each open range is [start, end, openedAt].
+  function deriveOpenRanges(events, problems) {
+    var byDevice = new Map();
+    events.forEach(function (ev, idx) {
+      var device = ev.device_id, kind = ev.event, start = ev.seq_start, end = ev.seq_end;
+      var where = 'gap event ' + (idx + 1) + ' (device ' + device + ', #' + start + '-#' + end + ')';
+      if (!byDevice.has(device)) byDevice.set(device, []);
+      var ranges = byDevice.get(device);
+      if (kind === 'opened') {
+        ranges.push([start, end, gapTime(ev.at, false)]);
+        return;
+      }
+      var at = -1;
+      for (var i = 0; i < ranges.length; i++) {
+        if (ranges[i][0] <= start && end <= ranges[i][1]) { at = i; break; }
+      }
+      if (at < 0) {
+        problems.push(where + ' is recorded as ' + kind + ', but no earlier \'opened\' event covers that ' +
+          'range and leaves it open. A gap cannot be closed that was never opened.');
+        return;
+      }
+      var host = ranges.splice(at, 1)[0];
+      if (host[0] < start) ranges.push([host[0], start - 1, host[2]]);
+      if (end < host[1]) ranges.push([end + 1, host[1], host[2]]);
+    });
+    return byDevice;
+  }
+
+  function gapShow(ranges) {
+    return ranges.map(function (r) { return '#' + r[0] + '-#' + r[1]; }).join(', ') || 'none';
+  }
+
+  function gapVersionScoped(body) {
+    return typeof body.subject === 'string' && body.subject.indexOf('version:') === 0;
+  }
+
+  // The signed open gaps as an array, or null when they are malformed.
+  function gapSignedOpenGaps(final) {
+    var gaps = final.open_gaps;
+    if (gaps === undefined || gaps === null) return [];
+    if (!Array.isArray(gaps)) return null;
+    for (var i = 0; i < gaps.length; i++) {
+      var g = gaps[i];
+      if (!isObj(g) || !gapValidDevice(g.device_id) || gapSeqProblem(g.seq_start, g.seq_end)) return null;
+    }
+    return gaps;
+  }
+
+  // {limit, malformed}; limit is null when the checkpoint signs none.
+  function gapAgeLimit(body) {
+    if (!has(body, 'completeness_policy')) return { limit: null, malformed: false };
+    var policy = body.completeness_policy;
+    if (!isObj(policy)) return { limit: null, malformed: true };
+    if (!has(policy, 'max_open_gap_hours')) return { limit: null, malformed: false };
+    var v = policy.max_open_gap_hours;
+    if (typeof v !== 'number' || !isFinite(v) || v <= 0 || !isFinite(v * 3600000000)) {
+      return { limit: null, malformed: true };
+    }
+    return { limit: v, malformed: false };
+  }
+
+  async function analyseGapHistory(cert, cps) {
+    cps = cps.filter(isObj);
+    function bodyOf(cp) { return isObj(cp.sth_body) ? cp.sth_body : {}; }
+    var recorded = [];
+    cps.forEach(function (cp) {
+      var c = bodyOf(cp).completeness;
+      if (c !== undefined && c !== null) recorded.push({ cp: cp, comp: c });
+    });
+    if (!recorded.length) return { recorded: false, problems: [], findings: [], summary: '' };
+
+    var problems = [], findings = [];
+    var events = cert.gap_events;
+    if (!Array.isArray(events) || !events.every(isObj)) {
+      return { recorded: true, summary: '', findings: [], problems: [
+        'a checkpoint signs a gap history, but the bundle carries no list of gap events to check it against'] };
+    }
+    var structure = gapStructureProblems(events);
+    if (structure.length) return { recorded: true, summary: '', findings: [], problems: structure };
+
+    // (a) every event hashes to its stated hash; the chain reproduces each signed root.
+    var hashes = [];
+    for (var i = 0; i < events.length; i++) {
+      var expected = await gapEventHash(events[i]);
+      if (events[i].event_hash !== expected) {
+        problems.push('gap event ' + (i + 1) + ' was changed after it was recorded: its stored hash does ' +
+          'not match its contents');
+      }
+      hashes.push(expected);
+    }
+    var roots = await gapRootChain(hashes);
+
+    var previous = -1;
+    recorded.forEach(function (r) {
+      var which = 'checkpoint ' + (r.cp.checkpoint_id === undefined ? 'None' : r.cp.checkpoint_id);
+      if (!isObj(r.comp)) { problems.push(which + ' has a malformed completeness block'); return; }
+      var count = r.comp.gap_event_count, root = r.comp.gap_events_root;
+      if (!isInt(count) || count < 0 || typeof root !== 'string' || !/^[0-9a-f]{64}$/.test(root)) {
+        problems.push(which + ' has no valid gap event count and root'); return;
+      }
+      if (count < previous) {
+        problems.push(which + ' signs ' + count + ' gap event(s), fewer than an earlier checkpoint signed (' +
+          previous + '). The gap history only grows; events were removed.');
+      }
+      previous = Math.max(previous, count);
+      if (count > events.length) {
+        problems.push(which + ' signed ' + count + ' gap event(s) but the bundle carries only ' + events.length +
+          '. Gap events were removed from the bundle.');
+      } else if (roots[count] !== root) {
+        problems.push('the first ' + count + ' gap event(s) do not reproduce the root signed in ' + which +
+          '. The gap history was altered, reordered or had events deleted.');
+      }
+    });
+
+    // Once a checkpoint signs a gap history, every later org-wide checkpoint must. A
+    // version-scoped checkpoint (subject "version:<id>") never carries one.
+    var seen = false;
+    cps.forEach(function (cp) {
+      var body = bodyOf(cp);
+      if (body.completeness !== undefined && body.completeness !== null) seen = true;
+      else if (seen && !gapVersionScoped(body)) {
+        problems.push('a later checkpoint no longer records the gap history: checkpoint ' +
+          (cp.checkpoint_id === undefined || cp.checkpoint_id === null ? 'None' : cp.checkpoint_id));
+      }
+    });
+    var orgWide = cps.filter(function (cp) { return !gapVersionScoped(bodyOf(cp)); });
+    var closing = bodyOf((orgWide.length ? orgWide : cps)[orgWide.length ? orgWide.length - 1 : cps.length - 1]);
+    var final = closing.completeness;
+    if (!isObj(final)) return { recorded: true, problems: problems, findings: findings, summary: '' };
+    if (isInt(final.gap_event_count) && events.length > final.gap_event_count) {
+      problems.push('the bundle carries ' + events.length + ' gap event(s) but the closing checkpoint signed ' +
+        'only ' + final.gap_event_count + '. Events after the signed head are not sealed.');
+    }
+
+    // (b) replay, then compare with the open gaps the closing checkpoint signed.
+    var derivedMap = deriveOpenRanges(events, problems);
+    var derived = new Map();
+    derivedMap.forEach(function (rs, device) {
+      if (rs.length) {
+        derived.set(device, rs.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1] || cmpTime(a[2], b[2]); }));
+      }
+    });
+    var signed = gapSignedOpenGaps(final);
+    if (signed === null) {
+      problems.push('the signed open gaps contain a malformed range');
+    } else {
+      var claimed = new Map();
+      signed.forEach(function (g) {
+        if (!claimed.has(g.device_id)) claimed.set(g.device_id, []);
+        claimed.get(g.device_id).push(g);
+      });
+      var devices = [];
+      derived.forEach(function (_, d) { devices.push(d); });
+      claimed.forEach(function (_, d) { if (!derived.has(d)) devices.push(d); });
+      devices.sort(cpCompare).forEach(function (device) {
+        var a = derived.get(device) || [];
+        var b = (claimed.get(device) || []).slice().sort(function (x, y) {
+          return x.seq_start - y.seq_start || x.seq_end - y.seq_end ||
+            cmpTime(gapTime(x.opened_at, false) || [-1, 0], gapTime(y.opened_at, false) || [-1, 0]);
+        });
+        var aKey = a.map(function (r) { return r[0] + '-' + r[1]; }).join(',');
+        var bKey = b.map(function (g) { return g.seq_start + '-' + g.seq_end; }).join(',');
+        if (aKey !== bKey) {
+          problems.push('device ' + device + ': the signed open gaps (' +
+            gapShow(b.map(function (g) { return [g.seq_start, g.seq_end]; })) + ') do not match the gaps ' +
+            'still open after replaying the events (' + gapShow(a) + ')');
+          return;
+        }
+        a.forEach(function (r, k) {
+          var name = 'device ' + device + ' #' + r[0] + '-#' + r[1];
+          var opened = gapTime(b[k].opened_at, false);
+          if (opened === null) {
+            problems.push('open gap ' + name + ': the age of an open gap cannot be worked out, because its ' +
+              'signed opened_at is missing or not in the form ' + GAP_TIME_FORM);
+          } else if (!sameTime(opened, r[2])) {
+            problems.push('open gap ' + name + ': the signed opened_at does not match the time its ' +
+              '\'opened\' event was recorded');
+          }
+        });
+      });
+    }
+
+    // (c) age, from the recorded time of the 'opened' event, measured at the closing
+    // checkpoint's own signed time.
+    var lim = gapAgeLimit(closing);
+    if (lim.malformed) problems.push(GAP_LIMIT_MALFORMED);
+    var issued = gapTime(closing.issued_at, true);
+    var openCount = 0;
+    var order = [];
+    derived.forEach(function (_, d) { order.push(d); });
+    order.forEach(function (device) {
+      derived.get(device).forEach(function (r) {
+        openCount++;
+        var name = 'device ' + device + ' #' + r[0] + '-#' + r[1];
+        if (issued === null) {
+          problems.push('open gap ' + name + ': the age of an open gap cannot be worked out, because the closing ' +
+            'checkpoint\'s issued_at is missing or not a UTC time');
+          return;
+        }
+        var micros = gapMicrosBetween(issued, r[2]);
+        if (micros < 0n) {
+          problems.push('open gap ' + name + ' was opened after the closing checkpoint was issued');
+          return;
+        }
+        var age = gapHoursText(micros);
+        if (lim.malformed) return;
+        if (lim.limit === null) {
+          findings.push('open gap ' + name + ': open ' + age + ' hours. The checkpoint records no age ' +
+            'limit, so this is reported but not failed');
+        } else if (Number(micros) > lim.limit * 3600000000) {
+          problems.push('open gap ' + name + ' has been open ' + age + ' hours, longer than the ' +
+            gapNumberText(lim.limit) + ' hours the signed policy allows');
+        } else {
+          findings.push('open gap ' + name + ': open ' + age + ' hours, within the ' +
+            gapNumberText(lim.limit) + ' hour limit');
+        }
+      });
+    });
+
+    return { recorded: true, problems: problems, findings: findings,
+      summary: events.length + ' gap event(s) reproduce the signed root; ' + openCount + ' gap(s) still open' };
+  }
+
+  // One check only when a checkpoint signs a gap history. A certificate with
+  // none gets no pass and no fail, so a summary row says "not recorded".
+  function gapHistoryRows(analysis) {
+    if (!analysis.recorded) {
+      return [['Sealed gap history', 'not recorded. No checkpoint in this certificate signs a gap history, ' +
+        'so nothing here can be said about gaps that were opened and later closed.']];
+    }
+    var rows = analysis.findings.map(function (f) { return ['Sealed gap history', f]; });
+    if (!rows.length) {
+      rows.push(['Sealed gap history', analysis.problems.length
+        ? 'this check failed, so what it says about open gaps is not shown. The failed check below says why.'
+        : 'no gap is open']);
+    }
+    return rows;
   }
 
   function describeCertificate(st, cps) {

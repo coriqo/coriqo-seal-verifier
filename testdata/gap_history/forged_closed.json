@@ -1,0 +1,62 @@
+{
+ "statement": {
+  "subject": "t",
+  "period": {
+   "from": "2026-11-17T12:00:00+00:00",
+   "to": "2026-11-17T12:00:00+00:00"
+  },
+  "checkpoint_count": 1,
+  "checkpoints": [
+   {
+    "checkpoint_id": "cp1",
+    "key_id": "test-key",
+    "sth_body": {
+     "issued_at": "2026-11-17T12:00:00+00:00",
+     "length": 10,
+     "root_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+     "completeness": {
+      "gap_events_root": "39fd316521e122b0f0aba878f2c9a2c466f51e8cf65b93ce3f9beb24f24fd961",
+      "gap_event_count": 1,
+      "open_gaps": [],
+      "device_seq_heads": {
+       "dev-1": 40
+      }
+     }
+    },
+    "signature_hex": "91690ded478130605274a8e56edd43e98ec549ce92d94f5ad3eb56bbfd1e1715f01076ab9bc4b83893775494deceb2cf0dc9cd4058c5b204bf907b33392f2209"
+   }
+  ],
+  "linkage": [],
+  "linkage_status": "not_applicable",
+  "linkage_unbroken": true,
+  "coverage": {
+   "sealed_event_count": 10,
+   "events_added_in_period": 0,
+   "obligations_in_period": {},
+   "obligations_closing": {}
+  },
+  "coverage_gaps": [],
+  "gap_summary": {
+   "total": 0
+  }
+ },
+ "key_id": "test-key",
+ "signature_hex": "e29cd9d988d4a90692769e3e11f7b0b32d1a5b664cbafe7d5ccce55335edd244748d6d34112568c1a3908d9c4e4fd3d4345cc356f083eaa6925d55182ce05f05",
+ "public_keys": {
+  "test-key": {
+   "pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA50FbL1Lr8HIgCQEXUVqWie2ZJFTfubpWCQDMYvIZeIw=\n-----END PUBLIC KEY-----\n"
+  }
+ },
+ "gap_events": [
+  {
+   "device_id": "dev-1",
+   "seq_start": 7,
+   "seq_end": 8,
+   "event": "closed",
+   "at": "2026-11-17T07:00:00Z",
+   "reason": "",
+   "actor": "reconcile",
+   "event_hash": "0400a53327300d9e767964184ada7386e844e91d1e01f4044c7736cd88133c99"
+  }
+ ]
+}
